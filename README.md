@@ -18,7 +18,6 @@ CuDebugger/
   benchmark/task_list.json  legacy task-list used by --mode debug
   scripts/                  setup and dataset materialization helpers
   analysis/                 aggregation/report scripts
-  docs/                     protocol, reproduction, analysis notes
   tests/                    smoke/unit tests that do not require an LLM key
   CUDABeaver/               full CUDABeaver repo as a git submodule
 ```
@@ -76,17 +75,7 @@ bash scripts/prepare_benchmark.sh
 
 `prepare_benchmark.sh` materializes the flat dataset layout used by the harness. It is idempotent and can be rerun.
 
-Generated reference caches are intentionally not shipped. Performance-gated runs should measure baselines on the reviewer's own GPU/CUDA stack before reproducing tables:
-
-```bash
-python scripts/measure_logic_baselines.py \
-  --dataset-root data \
-  --task-list benchmark/task_list.json \
-  --gpu <gpu-id> \
-  --out outputs/reference_baselines_gpu<gpu-id>.jsonl
-```
-
-This creates `data/evaluation/references_cache/<gpu_signature>/`. Applied-kernels runs may also create `harness/.cache/ref_builds/` while compiling CUDA references; that directory is generated scratch state.
+Generated reference caches are intentionally not shipped. Performance-gated runs create `data/evaluation/references_cache/<gpu_signature>/` lazily on the reviewer's own GPU/CUDA stack when a reference baseline is first needed. Applied-kernels runs may also create `harness/.cache/ref_builds/` while compiling CUDA references; that directory is generated scratch state.
 
 ## Sanity Checks
 
@@ -114,12 +103,12 @@ api:
 Then export the key. For local vLLM/SGLang, any non-empty placeholder is usually enough:
 
 ```bash
-export OPENAI_API_KEY=sk-...
+export OPENAI_API_KEY=<your-api-key>
 # or for local vLLM:
 export LOCAL_VLLM_KEY=dummy
 ```
 
-Many archived configs still contain the authors' internal endpoints. Those must be replaced with your endpoint before use.
+Configs use either localhost defaults or placeholder OpenAI-compatible endpoints. Replace them with your endpoint before use.
 
 ## Running a Single Experiment
 
@@ -193,7 +182,7 @@ python -m analysis.pivot_tables --master analysis_out/master.csv --out-dir analy
 For the tool-use and submission-attempt report used during artifact preparation:
 
 ```bash
-python analysis/agent_behavior_report.py --output docs/agent_behavior_analysis.md
+python analysis/agent_behavior_report.py --output analysis_out/agent_behavior_analysis.md
 ```
 
 That script expects the specific result directories named in the script. If you regenerate experiments into different output directories, update the run list at the top of `analysis/agent_behavior_report.py`.
@@ -206,4 +195,3 @@ That script expects the specific result directories named in the script. If you 
 - Performance-gated results can vary with GPU model, CUDA version, timing backend, and model serving stack.
 - `write_solution` submissions automatically trigger build/test feedback; explicit `build_only` and `test_only` tool calls are optional diagnostics.
 - Compute Sanitizer is used through the constrained `run_compute_sanitizer` tool, not arbitrary shell execution.
-

@@ -26,7 +26,7 @@ experiment:
   name: logic_agent_qwen36_27b_8050_thinking_t0_iter5_pgate07
   method: agent
   max_iterations: 5
-  dataset_dir: /home/li004074/CUDABeaver/data
+  dataset_dir: data
   output_dir: results_logic_agent_qwen36_27b_30005_thinking_t0_iter5_pgate07
   tasks:
   - cuda_110

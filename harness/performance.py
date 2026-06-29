@@ -10,6 +10,7 @@ from .benchmark import (
     compute_speedup as _bench_compute_speedup,
     load_reference as _bench_load_reference,
     run_candidate as _bench_run_candidate,
+    run_reference as _bench_run_reference,
 )
 
 
@@ -55,7 +56,17 @@ def measure_iter_perf(
             "error": f"{type(e).__name__}: {str(e)[:200]}",
         }
     if ref_entry is None:
-        return {"skipped": "reference_not_cached"}
+        try:
+            ref_entry = _bench_run_reference(
+                task_id,
+                gpu_id=gpu_id,
+                dataset_root=dataset_dir,
+            )
+        except Exception as e:
+            return {
+                "skipped": "reference_measurement_failed",
+                "error": f"{type(e).__name__}: {str(e)[:4000]}",
+            }
     if ref_entry.skipped:
         return {"skipped": ref_entry.skipped}
 

@@ -138,8 +138,8 @@ class ToolEnv:
     """Per-task execution context passed to every tool executor."""
 
     task_stem: str
-    task_workdir: Path           # /tmp/.../CUDA_10
-    dataset_dir: Path            # /home/.../CUDA-Debugger
+    task_workdir: Path           # task build scratch directory
+    dataset_dir: Path            # artifact data directory
     testbench_dir: Path          # dataset_dir / testbench / task_stem
     prompt_path: Path            # dataset_dir / prompts / task_stem.txt
     input_meta: dict             # parsed input/<stem>.json

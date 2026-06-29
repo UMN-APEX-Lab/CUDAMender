@@ -39,6 +39,7 @@ from .metrics import compute_task_metrics, compute_aggregate_metrics, metrics_to
 from .performance import evaluate_performance_gate as _evaluate_performance_gate
 from .benchmark import (
     run_candidate as _bench_run_candidate,
+    run_reference as _bench_run_reference,
     load_reference as _bench_load_reference,
     cache_lookup as _bench_cache_lookup,
     compute_speedup as _bench_compute_speedup,
@@ -371,7 +372,13 @@ def _measure_iter_perf(
         return {"skipped": "reference_not_defined"}
     ref_entry = _bench_cache_lookup(ref, dataset_root=dataset_dir)
     if ref_entry is None:
-        return {"skipped": "reference_not_cached"}
+        try:
+            ref_entry = _bench_run_reference(task_id, gpu_id=0, dataset_root=dataset_dir)
+        except Exception as e:
+            return {
+                "skipped": "reference_measurement_failed",
+                "error": f"{type(e).__name__}: {str(e)[:4000]}",
+            }
     if ref_entry.skipped:
         return {"skipped": ref_entry.skipped}
     files = [{"path": solution_file, "content": code}]

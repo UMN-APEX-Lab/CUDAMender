@@ -1,6 +1,6 @@
 """
 Eight-category classifier for CUDA build/test results.
-Aligned with CUDA-Debugger benchmark taxonomy (docs/error_taxonomy.md).
+Aligned with the CUDA-Debugger benchmark taxonomy.
 
 Categories (mutually exclusive, checked in priority order):
   1. environment_dependency_bug — GPU arch mismatch, driver issues, missing system libs

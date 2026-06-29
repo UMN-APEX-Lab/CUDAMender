@@ -1,7 +1,7 @@
 api:
   backend: vllm
   model: google/gemma-4-31B-it
-  base_url: http://cs-u-converge.cs.umn.edu:8031/v1
+  base_url: <OPENAI_COMPATIBLE_BASE_URL>
   temperature: 0
   max_model_len: 262144
   service_limit_reserve_tokens: 8192

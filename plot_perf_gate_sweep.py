@@ -6,10 +6,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from pathlib import Path
 from collections import defaultdict
 
-BASE = "/home/li004074/CUDABeaver"
+BASE = os.environ.get("CUDADEBUGGER_RESULTS_ROOT", ".")
 
 # GPT ran 101 compile tasks; Gemma/Qwen ran 92. Exclude the 9 GPT-only tasks for fair comparison.
 GPT_ONLY_COMPILE = {

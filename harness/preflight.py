@@ -265,11 +265,10 @@ def _check_reference_cache(
         )
     message = (
         "; ".join(details)
-        + ". Precompute references first, e.g. "
-        "`python3 scripts/measure_logic_baselines.py --dataset-root data "
-        "--task-list benchmark/task_list.json --error-category memory_crash --gpu <id>`."
+        + ". Missing reference timings are generated lazily on the target GPU "
+        "when a passing candidate first needs performance measurement."
     )
-    if hard_fail:
+    if hard_fail and (errors or skipped):
         report.add_error("reference_cache", message)
     else:
         report.add_warning("reference_cache", message)

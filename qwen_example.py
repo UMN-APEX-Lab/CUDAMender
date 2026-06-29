@@ -2,7 +2,7 @@ from openai import OpenAI
 import os
 
 client = OpenAI(
-    # If the environment variable is not set, replace it with your Model Studio API key: api_key="sk-xxx"
+    # Set DASHSCOPE_API_KEY in the environment before running this example.
     api_key=os.getenv("DASHSCOPE_API_KEY"),
     base_url="https://[workspace-id].ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
 )

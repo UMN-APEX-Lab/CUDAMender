@@ -1,7 +1,7 @@
 api:
   backend: vllm
   model: qwen3.6-27b
-  base_url: http://cs-u-converge.cs.umn.edu:30007/v1
+  base_url: <OPENAI_COMPATIBLE_BASE_URL>
   temperature: 0
   max_model_len: 262144
   max_tokens: null

@@ -791,7 +791,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=REPO_ROOT / "docs" / "agent_behavior_analysis.md",
+        default=REPO_ROOT / "analysis_out" / "agent_behavior_analysis.md",
         help="Markdown output path.",
     )
     args = parser.parse_args()

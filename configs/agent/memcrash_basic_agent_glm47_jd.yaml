@@ -1,7 +1,7 @@
 api:
   backend: openai
   model: GLM-4.7
-  base_url: https://llmgateway-jd.0xff.workers.dev/v1
+  base_url: <OPENAI_COMPATIBLE_BASE_URL>
   api_key_env: JD_API_KEY
   temperature: 0
   max_tokens: 32768

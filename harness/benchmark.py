@@ -385,15 +385,11 @@ import os  # noqa: E402
 import time  # noqa: E402
 from typing import Tuple  # noqa: E402
 
-LEGACY_PYTHON_BIN = Path("/mnt/data/anonymous/envs/cuda-debugger-exp/bin/python")
-
 
 def _python_bin() -> str:
     override = os.environ.get("CUDA_DEBUGGER_PYTHON") or os.environ.get("PYTHON_BIN")
     if override:
         return override
-    if LEGACY_PYTHON_BIN.exists():
-        return str(LEGACY_PYTHON_BIN)
     return sys.executable
 
 
