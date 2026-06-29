@@ -1,0 +1,18 @@
+{
+  "task_id": "cuda_70",
+  "reference_solution": {
+    "type": "file",
+    "files": [
+      {
+        "path": "solution.cu",
+        "content": "#include \"square_indices.h\"\n#include <thrust/tabulate.h>\n\nvoid square_indices(thrust::device_vector<int> &vec)\n{\n    return thrust::tabulate(vec.begin(), vec.end(), [] __device__(int i) { return i * i; });\n}"
+      }
+    ]
+  },
+  "benchmark_command": "./test.out --perf",
+  "timing_mode": {
+    "type": "cuda_event_stdout"
+  },
+  "n_trials": 100,
+  "warmup_trials": 3
+}

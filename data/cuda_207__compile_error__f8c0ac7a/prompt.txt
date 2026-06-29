@@ -1,0 +1,14 @@
+Write a CUDA kernel that computes a 3-input XOR on a one-dimensional array with a window size of 3 for each boolean input. The boolean values are stored in uint32_t integers, each containing 32 boolean values (for a total of number of integers times the number of operations). Each boolean element should become either 1 or 0 based on its own value and its two nearest neighbors, using XOR. Use thread coarsening so that each thread processes 128 booleans. Perform vectorized global-memory accesses by loading and storing those 128 booleans as a single uint4 thereby maximizing memory throughput. For simplicity, treat out-of-bounds values as zero in the XOR calculations.
+
+The kernel signature is declared in `include/kernel.h`:
+```cpp
+__global__ void k_calculateElement(uint32_t booleanElementsPerInteger, uint32_t numIntegers, uint32_t* integersIn_d, uint32_t* integersOut_d)
+```
+
+where `booleanElementsPerInteger` is an integer that indicates the number of boolean elements per integer in integersIn_d and integersOut_d, `numIntegers` specifies the number of integers in integersIn_d and integersOut_d, `integersIn_d` is a pointer to an array of integers in device memory used for reading old boolean element states, and `integersOut_d` is a pointer to an array of integers in device memory utilized for writing new boolean element states.
+
+**Examples:**
+```
+k_calculateElement(32, 4, { 2863311530, 2863311530, 2863311530, 11184810 }, integersOut_d) -> integersOut_d: { 2863311531, 2863311530, 2863311530, 27962026 }
+k_calculateElement(32, 1, { 240 }, integersOut_d) -> integersOut_d: { 360 }
+```

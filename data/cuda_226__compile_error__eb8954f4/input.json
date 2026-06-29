@@ -1,0 +1,17 @@
+{
+  "task_id": "cuda_226",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "radix-sort",
+    "cooperative-groups",
+    "cub-library",
+    "shared-memory",
+    "synchronization",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu --expt-relaxed-constexpr -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

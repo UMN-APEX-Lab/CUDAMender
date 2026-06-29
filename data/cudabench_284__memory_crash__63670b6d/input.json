@@ -1,0 +1,21 @@
+{
+  "task_id": "cudabench_284__memory_crash__63670b6d",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "cudabench_level3",
+  "tags": [
+    "cudabench",
+    "2d_convolution",
+    "memory-crash",
+    "strict-memory-access"
+  ],
+  "source": {
+    "benchmark": "CUDABench",
+    "task_id": 284,
+    "sample_index": 1,
+    "task_name": "2D_Convolution"
+  },
+  "build_command": "nvcc -o test.out solution.cu -arch=native",
+  "test_command": "mkdir -p data && python test/generate_data.py && python test/run_sanitizer.py ./test.out && python test/compare_output.py",
+  "solution_file": "solution.cu"
+}

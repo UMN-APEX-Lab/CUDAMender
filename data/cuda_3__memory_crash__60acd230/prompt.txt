@@ -1,0 +1,20 @@
+Implement a function called `launch` that launches a kernel function named `kernel` without using triple chevrons.
+The x, y, z grid and block dimensions will be provided as parameters to the `launch` function.
+
+The function signature is defined in `include/kernel_launch.h`:
+```cuda
+void launch(int gridSizeX, int blockSizeX, int gridSizeY = 1, int blockSizeY = 1,
+            int gridSizeZ = 1, int blockSizeZ = 1);
+```
+
+The `kernel` function is already defined with the following signature:
+```cuda
+__global__ void kernel(int *output, const int *input);
+```
+
+Your implementation should use the CUDA runtime API to launch the kernel with the specified grid and block dimensions.
+
+The `launch` function is responsible for providing the kernel's arguments (the output and input pointers).
+Since the test only validates that the kernel launch succeeds without errors, you do not need to allocate
+memory or initialize these pointers - simply declare pointer variables within the launch function and pass
+them as arguments to the kernel launch.

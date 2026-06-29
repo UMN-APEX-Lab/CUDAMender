@@ -1,0 +1,25 @@
+Write a CUDA kernel to identify the number with the highest bit count within a batch of four numbers, then compute the operation: {input - powf(a, n)}, where a is the average of the four numbers, and n is the highest bit count. Use coalesced loads and stores to improve memory throughput.
+
+The kernel must be implemented in `solution.cu` and have the following signature from `include/kernel_contract.h`:
+
+```cpp
+__global__ void k_calculateDifferencesFromPowerOfAveragePerChunk(
+    int32_t * input_d,
+    float * output_d,
+    int numChunks);
+```
+
+where:
+- `input_d`: pointer to the input integer array
+- `output_d`: pointer to the output float array
+- `numChunks`: number of chunks to compute, where each chunk is four elements
+
+The contract header provides `CHUNK_ELEMENTS` constant (4 elements per chunk) and `INPUT_CHUNK_TYPE` (int4) for coalesced access.
+
+**Examples:**
+
+Input: `{ 0, 0, 0, 1, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0 }`, numChunks=5
+Output: `{ -0.25f, -0.25f, -0.25f, 0.75f, -0.5f, 1.5f, -0.5f, -0.5f, 3.0f - 0.5625f, -0.5625f, -0.5625f, -0.5625f, -1.0f, -1.0f, 4.0f - 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f }`
+
+Input: `{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }`, numChunks=4
+Output: `{ -2.2500f, -1.2500f, -0.2500f, 0.7500f, -162.3750f, -161.3750f, -160.3750f, -159.3750f, -849.3750f, -848.3750f, -847.3750f, -846.3750f, -33203.0625f, -33202.0625f, -33201.0625f, -33200.0625f }`

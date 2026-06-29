@@ -1,0 +1,15 @@
+{
+  "task_id": "cuda_202",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "cuda-graphs",
+    "image-processing",
+    "kernel-nodes",
+    "pipeline"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu include/kernels.cu test/test_main.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

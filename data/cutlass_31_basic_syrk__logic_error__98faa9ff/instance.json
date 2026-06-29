@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_31_basic_syrk__logic_error__98faa9ff",
+  "task_family": "cutlass",
+  "error_category": "logic_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 591,
+  "broken_start_hash": "98faa9ffe6fb1c44"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_20_simt_canonical__logic_error__ce1dc03e",
+  "task_family": "cutlass",
+  "error_category": "logic_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 234,
+  "broken_start_hash": "ce1dc03e83e2ba76"
+}

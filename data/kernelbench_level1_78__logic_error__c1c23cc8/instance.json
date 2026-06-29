@@ -1,0 +1,17 @@
+{
+  "id": "kernelbench_level1_78__logic_error__c1c23cc8",
+  "task_family": "kernelbench",
+  "error_category": "logic_error",
+  "difficulty": "medium",
+  "upstream_library": "KernelBench",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.py",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 142,
+  "broken_start_hash": "c1c23cc862d1f243"
+}

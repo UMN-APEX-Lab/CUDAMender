@@ -1,0 +1,24 @@
+Write a CUDA kernel to smooth the pixel values of an image using libcu++ array types for storing coefficient-related data and for performing the smoothing computation. For simplicity, treat any out-of-bounds pixels as a value of 0.0f. The smoothing filter should be 3x3 in size, with values of 0.25f for corners, 0.50f for edges, and 1.00f for the center.
+
+The kernel signature and required constants are defined in `include/blur_kernel.h`:
+
+```cpp
+__global__ void k_blur(int width, int height,
+                       cuda::std::array<float, MAX_PIXELS>* pixel_d,
+                       cuda::std::array<float, MAX_PIXELS>* blurredPixel_d);
+```
+
+Where:
+- `width`: width of the image
+- `height`: height of the image
+- `pixel_d`: pointer to the cuda::std::array of floats for input pixels on the device
+- `blurredPixel_d`: pointer to the cuda::std::array of floats for output pixels on the device
+
+Example behavior:
+```
+>>> k_blur(5, 4, { 0.00f, 1.00f, 0.00f, 1.00f, 0.00f, 1.00f ... alternating between 0.00f and 1.0f for 20 elements }, blurredPixel_d)
+    -> blurredPixel_h: { 0.250f, 0.375f, 0.375f, 0.375f, 0.250f, 0.375f, 0.500f, 0.500f, 0.500f, 0.375f, 0.375f, 0.500f, 0.500f, 0.500f, 0.375f, 0.312f, 0.375f, 0.375f, 0.375f, 0.312f }
+
+>>> k_blur(5, 4, { 0.00f, 0.05f, 0.10f, 0.15f, 0.20f, 0.25f, 0.30f, 0.35f, 0.40f, 0.45f, 0.50f, 0.55f, 0.60f, 0.65f, 0.70f, 0.75f, 0.80f, 0.85f, 0.90f, 0.95f }, blurredPixel_d)
+    -> blurredPixel_h: { 0.047f, 0.088f, 0.125f, 0.112f, 0.163f, 0.250f, 0.300f, 0.250f, 0.313f, 0.450f, 0.500f, 0.400f, 0.462f, 0.650f, 0.700f, 0.550f, 0.422f, 0.587f, 0.625f, 0.488f }
+```

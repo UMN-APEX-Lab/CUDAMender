@@ -1,0 +1,17 @@
+Write a function `void spsv_sell_example(...)` that demonstrates the usage of
+the cuSPARSE library to solve a sparse triangular system using `cusparseSpSV`.
+The function should:
+- Handle matrices in SELL (Sliced ELLPACK) format.
+- Accept host data and handle all device memory allocation, data transfers, and
+  cleanup internally.
+
+The function signature is declared in `include/spsv_sell.h`:
+```cpp
+void spsv_sell_example(int A_num_rows, int A_num_cols, int A_nnz,
+                       const std::vector<int>& hA_sliceOffsets,
+                       const std::vector<int>& hA_columns,
+                       const std::vector<float>& hA_values,
+                       const std::vector<float>& hX,
+                       std::vector<float>& hY,
+                       float alpha);
+```

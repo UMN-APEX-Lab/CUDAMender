@@ -1,0 +1,17 @@
+{
+  "task_id": "cuda_151",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "miller-rabin",
+    "primality-testing",
+    "warp-primitives",
+    "shared-memory",
+    "occupancy-api",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu helper.cu test/*.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

@@ -1,0 +1,18 @@
+Write a function `void solveGpsvInterleavedBatch(...)` that demonstrates usage
+of the cuSPARSE library to solve a batch of tridiagonal systems using the
+`cusparseSgpsvInterleavedBatch` API.
+
+The function should:
+- Convert the input data from aggregate to interleaved format using cuBLAS.
+- Return the solution in aggregate format.
+- Accept host data and handle all device memory allocation, data transfers, and
+  cleanup internally.
+
+Function signature is defined in `include/gpsv_interleaved_batch.h`:
+```cpp
+void solveGpsvInterleavedBatch(
+    int n, int batchSize, const std::vector<float>& h_S,
+    const std::vector<float>& h_L, const std::vector<float>& h_M,
+    const std::vector<float>& h_U, const std::vector<float>& h_W,
+    const std::vector<float>& h_B, std::vector<float>& h_X);
+```

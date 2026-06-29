@@ -1,0 +1,45 @@
+# v3 mem_crash supplemental — qwen36_27b_feedback_l4_memcrash (G+B+T+P with ncu)
+# Levels: 0=none, 1=G, 2=G+B, 3=G+B+T (=baseline iter), 4=G+B+T+P (ncu).
+api:
+  backend: vllm
+  model: Qwen/Qwen3.6-27B
+  base_url: http://localhost:8005/v1
+  temperature: 0.7
+  top_p: 0.9
+  max_tokens: 16384
+  timeout: 300
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: false
+experiment:
+  name: qwen36_27b_feedback_l4_memcrash
+  method: iterative
+  feedback_level: 4
+  max_iterations: 5
+  max_history_rounds: 4
+  dataset_dir: "data"
+  output_dir: "outputs/feedback/qwen36_27b_feedback_l4_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+build:
+  workdir: /tmp/cuda_debugger_v3_qwen36_27b_feedback_l4
+  timeout: 300
+  test_timeout: 300
+logging:
+  level: INFO
+  save_api_responses: true

@@ -1,0 +1,13 @@
+Write a function `void gather(...)` that demonstrates usage of the cuSPARSE
+library to gather elements from a dense vector `hY` into a sparse vector
+`hX_values` using `cusparseGather`. The indices of the sparse vector are
+provided in `hX_indices`. This function should accept host data and handle all
+device memory allocation, data transfers, and cleanup internally.
+
+Function signature:
+```
+void gather(int size, int nnz, const std::vector<int>& hX_indices,
+            const std::vector<float>& hY, std::vector<float>& hX_values);
+```
+
+Your implementation should be in `solution.cu` and include `gather.h`.

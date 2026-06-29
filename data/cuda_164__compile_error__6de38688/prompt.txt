@@ -1,0 +1,20 @@
+Implement a function using Thrust that filters out elements from the input array wherever the corresponding value in the predicate array is one.
+
+The function signature is declared in `include/predicate_filter.h`:
+```cpp
+void predicateBasedFilter(thrust::device_vector<int>& inpVector,
+                         thrust::device_vector<int>& predicateVector,
+                         thrust::device_vector<int>& outVector);
+```
+
+where `inpVector` is the input vector, `predicateVector` is the vector used to filter input vector (1 means keep the element), and `outVector` is the output filtered vector. All vectors are Thrust device-vectors.
+
+Examples:
+```
+predicateBasedFilter({ 8, 7, -7, -6, 2 }, { 0, 1, 1, 0, 1 }, outVector)
+→ outVector = { 7, -7, 2 }
+
+predicateBasedFilter({ 8, 7, -7, -6, 2, 6, 0, -13, 4, -19 },
+                     { 0, 1, 1, 0, 1, 1, 0, 0, 0, 1 }, outVector)
+→ outVector = { 7, -7, 2, 6, -19 }
+```

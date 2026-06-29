@@ -1,0 +1,41 @@
+Implement the N-body algorithm's force calculation using CUDA. Utilize shared memory tiling to optimize the accesses. For simplicity, perform calculations in 2D space.
+
+The signature of the CUDA kernel is defined in `include/nbody_kernel.h`:
+```cpp
+__global__ void k_calculateNBodyForce(float *xPosition_d, float *yPosition_d, float *mass_d, float *xForce_d, float *yForce_d);
+```
+
+Where:
+- `xPosition_d`: pointer to the array of x-coordinate values of particles
+- `yPosition_d`: pointer to the array of y-coordinate values of particles
+- `mass_d`: pointer to the array of mass values of particles
+- `xForce_d`: pointer to the array of x components of the computed forces
+- `yForce_d`: pointer to the array of y components of the computed forces
+
+**Algorithm Requirements:**
+
+For each particle i, calculate the total gravitational force from all other particles j using the gravitational force law in 2D.
+The force between two particles is attractive and depends on their masses and the distance between them.
+
+Key considerations:
+- Use the SMOOTHING parameter in distance calculations to prevent division by zero and maintain numerical stability
+- Treat particles closer than VERY_CLOSE as having zero force contribution to avoid self-interaction
+- The gravitational force magnitude follows the inverse-square law with the formula: F = G × m_i × m_j / r^3, where r is the distance computed with smoothing applied
+- Force direction points from particle i toward particle j (attractive, hence negative)
+- Maintain numerical precision during force accumulation
+
+**Implementation Requirements:**
+
+Your kernel must support arbitrary grid and block dimensions, with threads capable of processing multiple particles when the total thread count differs from the particle count.
+
+Use shared memory tiling to optimize memory accesses:
+- Process particles in tiles of NUM_PARTICLES_PER_TILE
+- Load particle data (positions and masses) cooperatively into shared memory for each tile
+- Ensure proper synchronization to maintain correctness between loading and computation
+- Handle cases where NUM_PARTICLES is not evenly divisible by NUM_PARTICLES_PER_TILE
+
+Example behavior:
+```
+>>> k_calculateNBodyForce({ 100.0000f, 200.0000f, 300.0000f, 400.0000f, 500.0000f }, { 100.0000f, 200.0000f, 300.0000f, 400.0000f, 500.0000f }, { 1.0000f, 1.0000f, 1.0000f, 1.0000f, 1.0000f }, xForce_d, yForce_d) -> xForce_d: { 0.5000f, 0.1300f, -0.0000f, -0.1300f, -0.5000f }, yForce_d: { 0.5000f, 0.1300f, -0.0000f, -0.1300f, -0.5000f }
+>>> k_calculateNBodyForce({ 500.0000f, 975.5283f, 793.8926f, 206.1072f, 24.4718f }, { 1000.0000f, 654.5085f, 95.4915f, 95.4916f, 654.5085f }, { 1.0000f, 1.0000f, 1.0000f, 1.0000f, 1.0000f }, xForce_d, yForce_d) -> xForce_d: { -0.0000f, -0.0524f, -0.0324f, 0.0324f, 0.0524f }, yForce_d: { -0.0551f, -0.0170f, 0.0445f, 0.0445f, -0.0170f }
+```

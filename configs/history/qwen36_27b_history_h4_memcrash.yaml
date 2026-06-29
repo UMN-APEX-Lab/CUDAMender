@@ -1,0 +1,44 @@
+# v3 mem_crash supplemental — qwen36_27b_history_h4_memcrash
+# 208 tasks (full pool, NO source-self skip — testing Qwen3.6-27B-Instruct fresh)
+# Requires vLLM server: vllm serve Qwen/Qwen3.6-27B --port 8005 --tp 2
+api:
+  backend: vllm
+  model: Qwen/Qwen3.6-27B
+  base_url: http://localhost:8005/v1
+  temperature: 0.7
+  top_p: 0.9
+  max_tokens: 16384
+  timeout: 300
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: false
+experiment:
+  name: qwen36_27b_history_h4_memcrash
+  max_iterations: 5
+  max_history_rounds: 4
+  dataset_dir: "data"
+  output_dir: "outputs/history/qwen36_27b_history_h4_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+build:
+  timeout: 300
+  test_timeout: 300
+  workdir: /tmp/cuda_debugger_v3_qwen36_27b_history_h4
+logging:
+  level: INFO
+  save_api_responses: true

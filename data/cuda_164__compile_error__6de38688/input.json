@@ -1,0 +1,16 @@
+{
+  "task_id": "cuda_164",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "thrust",
+    "partition",
+    "filter",
+    "predicate",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -I \"$(dirname $(which nvcc))/../targets/x86_64-linux/include/cccl\" -o test.out solution.cu test/*.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

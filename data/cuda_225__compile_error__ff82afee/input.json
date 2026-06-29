@@ -1,0 +1,17 @@
+{
+  "task_id": "cuda_225",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "streams",
+    "events",
+    "cooperative-groups",
+    "reduction",
+    "concurrency",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu src/least_squares_kernels.cu test/*.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

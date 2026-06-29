@@ -1,0 +1,17 @@
+{
+  "id": "cusolver_17__compile_error__90110ffc",
+  "task_family": "cusolver",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "NVIDIA CUDA toolkit (cuSOLVER)",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 137,
+  "broken_start_hash": "90110ffcc18e65b4"
+}

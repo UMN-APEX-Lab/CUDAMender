@@ -1,0 +1,17 @@
+{
+  "id": "cusparse_9__compile_error__4e4ac1c3",
+  "task_family": "cusparse",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "NVIDIA CUDA toolkit (cuSPARSE)",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 129,
+  "broken_start_hash": "4e4ac1c3bd39e86e"
+}

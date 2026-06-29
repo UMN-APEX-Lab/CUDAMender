@@ -1,0 +1,17 @@
+Write a CUDA kernel that performs in-place bitonic sort on a dataset. The kernel will use each thread to load a single element and compare it with adjacent elements within a block.
+
+Implement the function in `solution.cu` by including `include/bitonic_sort.h` and `include/common.h`:
+
+```cuda
+__global__ void k_bitonicSort(float* inputData, int size);
+```
+
+Where:
+- `inputData` is the pointer to the unsorted input and sorted output array
+- `size` denotes the array length of `inputData`
+
+Examples:
+```
+k_bitonicSort({4.5, 3, 7.2, 5, 2.1}, 5) => ({2.1, 3, 4.5, 5, 7.2})
+k_bitonicSort({12, 9.5, 15.3, 3, 5.8, 8}, 6) => ({3, 5.8, 8, 9.5, 12, 15.3})
+```

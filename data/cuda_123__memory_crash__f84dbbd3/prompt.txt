@@ -1,0 +1,45 @@
+Write a CUDA kernel to perform erosion operation over a binary image.
+
+The erosion operation needs to be performed for a given number of iterations. All iterations must be performed within a single kernel launch. Between each iteration, all threads across all blocks in the grid must synchronize before proceeding to the next iteration.
+
+Outputs of each iteration need to be stored on device memory and reused across iterations. Use the provided intermediate buffer to alternate between iterations while ensuring proper grid-wide synchronization.
+
+**Erosion Operation Details:**
+For each pixel position, examine all positions covered by the structuring element centered at that pixel. Only consider positions where:
+1. The structuring element value is 1 (foreground)
+2. The position is within the image boundaries
+
+If ALL such examined positions have value 1 in the input image, the output pixel is 1. Otherwise, the output pixel is 0. Positions outside the image boundaries are ignored (not treated as background).
+
+The kernel signature is defined in `include/image_erosion.h`:
+```cpp
+__global__ void k_imageErosion(const unsigned char *inputImage_d,
+                               const unsigned char *structuringElement_d,
+                               unsigned char *outputImage_d,
+                               unsigned char *outputImageIntermediateBuffer_d,
+                               int inputImageWidth,
+                               int inputImageHeight,
+                               int structuringElementWidth,
+                               int structuringElementHeight,
+                               int numberOfErosionIterations);
+```
+
+**Parameters:**
+- `inputImage_d`: Pointer to input image on device
+- `structuringElement_d`: Pointer to structuring element on device
+- `outputImage_d`: Pointer to output image on device (final result must be here after all iterations)
+- `outputImageIntermediateBuffer_d`: Pointer to additional buffer for intermediate results
+- `inputImageWidth`, `inputImageHeight`: Dimensions of the input image
+- `structuringElementWidth`, `structuringElementHeight`: Dimensions of the structuring element
+- `numberOfErosionIterations`: Number of erosion iterations to perform
+
+**Examples:**
+```
+Input: {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0}, SE: {1,1,1,1,1,1,1,1,1}, 5x5, 3x3, 1 iteration
+Output: {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0}
+
+Input: {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0}, SE: {1,1,1,1,1,1,1,1,1}, 5x5, 3x3, 2 iterations
+Output: {0,0,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0}
+```
+
+Constants are defined in `include/erosion_constants.h`.

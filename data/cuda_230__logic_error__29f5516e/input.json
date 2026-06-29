@@ -1,0 +1,16 @@
+{
+  "task_id": "cuda_230",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "kernel",
+    "shared-memory",
+    "occupancy",
+    "tiling",
+    "grid-stride-loop"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/test_main.cu --expt-relaxed-constexpr -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

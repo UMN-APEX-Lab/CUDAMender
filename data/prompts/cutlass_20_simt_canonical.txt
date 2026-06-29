@@ -1,0 +1,1 @@
+../cutlass_20_simt_canonical__logic_error__ce1dc03e/prompt.txt

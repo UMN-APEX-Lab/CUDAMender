@@ -1,0 +1,85 @@
+Write a CUDA kernel to implement the Local Binary Pattern (LBP) with dynamic number of neighbors.
+
+The implementation on the host side should find the optimal tiling segment dimension as per the available shared memory size and compute the optimal blocks and grid dimension required to launch the kernel.
+
+The kernel and helper functions are declared in `include/lbp_kernel.h`:
+
+```cpp
+__global__ void k_localBinaryKernel(const unsigned char* input, unsigned char* output,
+                                     int width, int segHeight, int numNeighbors, float radius);
+```
+
+Where:
+- `input`: pointer to the input image data
+- `output`: pointer to computed image data
+- `width`: image width
+- `segHeight`: segment height of the image
+- `numNeighbors`: number of neighbor samples used for binary comparison
+- `radius`: sampling radius used to determine the neighbor pixel positions
+
+```cpp
+size_t dynamicSMemSizeFunc(int blockSize);
+```
+
+Where `blockSize` represents the number of threads per block for which to compute the required dynamic shared memory size.
+
+```cpp
+cudaError_t getOptimalLaunchParams(int segmentSize, int &optBlockSize,
+                                    int &blocksPerGrid, float &theoreticalOccupancy);
+```
+
+Where:
+- `segmentSize`: total number of pixels in the current image segment
+- `optBlockSize`: computed optimal number of threads per block
+- `blocksPerGrid`: computed number of blocks to launch in the grid
+- `theoreticalOccupancy`: estimated GPU occupancy for that configuration
+
+**Algorithm Requirements:**
+
+The LBP computation for each pixel must:
+
+1. Sample neighbor positions on a circle of the given radius around the center pixel.
+   The neighbors should be evenly distributed around the circle, with neighbor k positioned
+   at an angular offset that increases uniformly from k=0 to k=numNeighbors-1.
+   For the angular coordinate system, use the standard convention where angle zero points
+   to the right (positive x direction), and angles increase counter-clockwise.
+   When computing the y-coordinate from the angle, account for the fact that in image
+   coordinates, y increases downward.
+
+2. Use bilinear interpolation to compute the intensity value at each neighbor position
+   from the four surrounding integer pixel coordinates.
+
+3. Compare each interpolated neighbor intensity with the center pixel intensity to determine
+   a binary value (1 if neighbor >= center, 0 otherwise).
+
+4. Construct the final LBP code as an unsigned char by placing the binary comparison results
+   into bit positions, with the comparison result for neighbor 0 in the most significant bit
+   position, neighbor 1 in the next bit, and so on.
+
+5. For any pixel or neighbor position that falls outside the image bounds, treat it as having
+   an intensity value of zero.
+
+**Implementation Requirements:**
+
+1. Use 2D thread blocks where the x-dimension should be bounded by MAX_BLOCKS_PER_SEGMENT,
+   and the y-dimension should be computed to utilize the full blockSize threads.
+
+2. Implement shared memory tiling with a halo region of exactly one pixel on all sides
+   of each tile to accommodate the radius-1.0 sampling pattern.
+
+3. Threads within each block should cooperatively load the tile data (including halo)
+   into shared memory before computing LBP values.
+
+4. The dynamicSMemSizeFunc should compute the shared memory size needed for a tile
+   based on the block dimensions plus the halo region.
+
+**Examples:**
+```cpp
+k_localBinaryKernel({10,10,10,10,10, 10,20,20,20,10, 10,20,30,20,10, 10,20,20,20,10, 10,10,10,10,10},
+                    output, 5, 5, 8, 1.0)
+  --> output({131, 143, 143, 143, 14, 195, 131, 143, 14, 62, 192, 224, 0, 56, 56,
+              131, 128, 136, 8, 14, 192, 240, 240, 240, 48})
+
+k_localBinaryKernel({5,5,5, 5,10,5, 5,5,5}, output, 3, 3, 8, 1.0f)
+  --> output({131, 143, 14, 192, 0, 56, 128, 128, 0})
+```

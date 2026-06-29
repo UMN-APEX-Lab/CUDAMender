@@ -1,0 +1,3 @@
+Write a function `bool has_negatives(thrust::device_vector<int> const& vec)` that checks whether there are any negatives in the input vector using a thrust algorithm. Do not use `thrust::all_of`.
+
+The function signature is declared in `include/has_negatives.h`.

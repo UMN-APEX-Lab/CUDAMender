@@ -1,0 +1,17 @@
+{
+  "task_id": "cuda_189",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "prefix-sum",
+    "warp-shuffle",
+    "cooperative-groups",
+    "scan",
+    "parallel-algorithms",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu -arch=native -ldl",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

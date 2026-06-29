@@ -1,0 +1,23 @@
+Write a CUDA kernel to separate odd and even indexed elements of an array into different arrays using shared memory for coalesced global memory access while avoiding warp-divergence.
+
+The kernel signature is defined in `include/odd_even_separation.h`:
+```cuda
+__global__ void k_separateOddEven(int *input_d, int *oddData_d, int *evenData_d, int numElements);
+```
+
+Where:
+- `input_d` is the input vector containing all the input values
+- `oddData_d` is output vector for odd-indexed elements in the input_d vector
+- `evenData_d` is output vector for even-indexed elements in the input_d vector
+- `numElements` is the total number of elements
+
+The constant `NUM_THREADS_PER_BLOCK` is defined in the header and must be used for shared memory allocation (value: 256).
+
+Examples:
+```
+k_separateOddEven({41, 18467, 6334, 26500, 19169, 15724, 11478, 29358, 26962, 24464}, oddData_d, evenData_d, 10)
+→ oddData_d: {18467, 26500, 15724, 29358, 24464}, evenData_d: {41, 6334, 19169, 11478, 26962}
+
+k_separateOddEven({5705, 28145, 23281, 16827, 9961, 491, 2995, 11942, 4827, 5436}, oddData_d, evenData_d, 10)
+→ oddData_d: {28145, 16827, 491, 11942, 5436}, evenData_d: {5705, 23281, 9961, 2995, 4827}
+```

@@ -1,0 +1,23 @@
+Write a CUDA kernel to compute log2(x), where 0.0f < x < 1.0f, using a lookup table in shared memory and calculating the lookup index from the mantissa bits of the input data. Transmit the lookup table from global memory to shared memory before beginning calculations. Avoid memory bank conflicts for shared memory accesses and ensure coalesced access to global memory. Duplicate each lookup table element for each shared memory bank or for as many banks as required.
+
+The kernel is declared in `include/log2_kernel.h`:
+```cpp
+__global__ void k_calculateLog2(int numElements, float *data_d, float *lookupTable_d, int lookupTableDuplication);
+```
+
+Where:
+- `numElements` represents the number of input/output elements
+- `data_d` is a pointer to an array of floats in device memory used as inputs and outputs
+- `lookupTable_d` is a pointer to an array of floats in device memory serving as the lookup table
+- `lookupTableDuplication` indicates the number of duplicates per lookup table element to reduce memory bank collisions
+
+The constant `LOOKUP_TABLE_ELEMENTS = 256` is defined in the header.
+
+**Examples:**
+```
+k_calculateLog2(10, { 0.5f, 0.25f, 0.125f, 0.0625f, 0.03125f, 0.015625f, 0.0078125f, 0.00390625f, 0.00195312f, 0.000976562f }, { log2f(1.0f + index / (float) LOOKUP_TABLE_ELEMENTS) }, 32)
+-> data_d: { -1.0f, -2.0f, -3.0f, -4.0f, -5.0f, -6.0f, -7.0f, -8.0f, -9.0f, -10.0f }
+
+k_calculateLog2(10, { 1.0f, 0.5f, 0.333333f, 0.25f, 0.2f, 0.166667f, 0.142857f, 0.125f, 0.111111f, 0.1f }, { log2f(1.0f + index / (float) LOOKUP_TABLE_ELEMENTS) }, 32)
+-> data_d: { 0.0f, -1.0f, -1.60768f, -2.0f, -2.32757f, -2.60768f, -2.83008f, -3.0f, -3.19265f, -3.32757f }
+```

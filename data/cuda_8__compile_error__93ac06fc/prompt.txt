@@ -1,0 +1,27 @@
+Implement a CUDA function called `run_cuda_graph` that sets up and executes a CUDA graph for processing an image represented as a 1D array. The function signature is:
+
+```cuda
+void run_cuda_graph(float* d_img, float* h_result, int width, int height)
+```
+
+In this function, you will create a CUDA graph to apply several image processing steps: edge detection, normalization, blurring, combining results, and a final transformation. You will use the following kernels (declared in `include/kernels.h`):
+
+- `apply_edge_detection(float* img, float* result, int width, int height)`
+- `normalize_image(float* img, int width, int height)`
+- `apply_blur_filter(float* img, float* result, int width, int height)`
+- `combine_filtered_results(float* edge_result, float* blur_result, float* combined_result, int width, int height)`
+- `final_transformation(float* img, int width, int height)`
+
+**Requirements:**
+1. Allocate necessary device memory for intermediate results
+2. Configure graph nodes with appropriate parameters
+3. Apply edge detection filter to the input image
+4. Normalize the resulting image values
+5. Apply blur filter to the normalized image
+6. Combine the results of edge detection and blur filters
+7. Perform a final transformation on the combined result
+8. Use a block size of 256 threads
+9. Execute the graph 100 times
+10. Copy the final result back to the host
+
+Your implementation should be in `solution.cu` and include `include/cuda_graph.h`.

@@ -1,0 +1,15 @@
+{
+  "task_id": "cuda_26",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "warp-primitives",
+    "reduction",
+    "shared-memory",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -rdc=true -o test.out solution.cu src/kernel_wrapper.cu test/*.cu -arch=native -ldl",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

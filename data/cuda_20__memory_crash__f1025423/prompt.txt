@@ -1,0 +1,13 @@
+Write a CUDA kernel function called `stencil_1d` that performs a 1D stencil operation on a large 1D
+array. The stencil operation should calculate the sum of each element and its neighboring elements
+within a specified radius. The function should handle array sizes larger than the number of threads
+in a block and utilize static shared memory for optimization.
+
+The function signature and constants are defined in `include/stencil.h`:
+- `BLOCK_SIZE`: The number of threads per block (256)
+- `RADIUS`: The radius of the stencil (3)
+
+Implement your solution in `solution.cu` with the signature:
+```cuda
+__global__ void stencil_1d(int *in, int *out)
+```

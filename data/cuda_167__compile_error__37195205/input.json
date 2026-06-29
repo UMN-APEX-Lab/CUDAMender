@@ -1,0 +1,18 @@
+{
+  "task_id": "cuda_167",
+  "schema_version": 2,
+  "difficulty": "hard",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "tensor-cores",
+    "mma",
+    "ptx",
+    "shared-memory",
+    "ldmatrix",
+    "matrix-multiplication",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu -gencode arch=compute_80,code=[sm_80,compute_80] -ldl",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

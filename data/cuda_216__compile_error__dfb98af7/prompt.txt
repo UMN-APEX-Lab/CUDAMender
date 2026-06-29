@@ -1,0 +1,34 @@
+Write a CUDA kernel for parallel Breadth-First Search (BFS) on graphs stored in Compressed Sparse Row (CSR) format. The kernel should compute the distance from a source node to all other reachable nodes and store the results in an output array. Each thread should process nodes in the current frontier, iterate through their neighbors using CSR row and column arrays, update the distances of unvisited neighbors, and add those neighbors to the next frontier for the subsequent BFS level.
+
+Your implementation should be in a file that includes `include/bfs_kernel.h` and implements the following kernel:
+
+```cuda
+__global__ void k_bfsKernel(
+    const int* rowOffsets_d,
+    const int* colIndices_d,
+    const int* frontier_d,
+    int frontierSize,
+    int currentLevel,
+    int* distances_d,
+    int* nextFrontier_d,
+    int* nextFrontierSize_d);
+```
+
+**Parameters:**
+- `rowOffsets_d`: Pointer to CSR row pointer array that stores the starting index of node i's adjacency list in the colIndices array
+- `colIndices_d`: Pointer to CSR column indices array where colIndices[j] contains the neighbor node ID at position j in the flattened adjacency representation
+- `frontier_d`: Pointer to current frontier array that contains the node ID of the k-th node to be processed in this BFS iteration
+- `frontierSize`: Scalar value that represents the total number of active nodes in the current frontier
+- `currentLevel`: Current BFS level that represents the distance value assigned to newly discovered nodes
+- `distances_d`: Distance array that stores the shortest path distance from source to node i
+- `nextFrontier_d`: Pointer to next frontier array that will store newly discovered node IDs for the subsequent BFS level
+- `nextFrontierSize_d`: Pointer to atomic counter that tracks the number of nodes added to the next frontier during kernel execution
+
+**Example behavior:**
+```
+>>> k_bfsKernel({0, 3, 7, 10, 14, 18, 21, 25, 28, 32, 35}, {1, 4, 7, 0, 2, 5, 8, 1, 3, 6, 2, 4, 9, 0, 3, 5, 7, 1, 4, 6, 2, 5, 8, 6, 7, 4, 6, 9, 5, 7, 8, 3, 8, 9, 2, 9}, {3}, 1, 0, distances_d, nextFrontier_d, nextFrontierSize_d)
+    -> output: (distances_d: {2, 3, 2, 0, 1, 1, 2, 1, 2, 2}, nextFrontier_d: {0, 4, 5, 7}, nextFrontierSize_d: 4)
+
+>>> k_bfsKernel({0, 4, 8, 12, 15, 19, 23, 26, 30, 33, 37, 40}, {0, 3, 7, 9, 1, 4, 5, 11, 2, 6, 8, 2, 5, 7, 0, 3, 4, 11, 2, 5, 8, 1, 4, 6, 9, 2, 5, 7, 0, 3, 6, 10}, {5}, 1, 0, distances_d, nextFrontier_d, nextFrontierSize_d)
+    -> output: (distances_d: {3, 2, 1, 1, 2, 0, 3, 2, 1, 2, 3, 1}, nextFrontier_d: {2, 3, 8, 11}, nextFrontierSize_d: 4)
+```

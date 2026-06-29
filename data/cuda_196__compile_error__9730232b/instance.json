@@ -1,0 +1,17 @@
+{
+  "id": "cuda_196__compile_error__9730232b",
+  "task_family": "cuda",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": null,
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 50,
+  "broken_start_hash": "9730232befb3b10c"
+}

@@ -1,0 +1,24 @@
+Implement a CUDA kernel that performs a 3D stencil operation on an input float matrix and populates the output matrix with weighted values.
+
+The stencil operation uses a 6-point star pattern with radius 1, considering only the face-adjacent neighbors in each dimension. Specifically, for each element at position (i, j, k), the six neighbors are the elements directly adjacent along each axis: one step forward and backward in each of the three dimensions. Diagonal neighbors are not included.
+
+For each interior element, compute a weighted sum where the element itself is weighted by C0, and the sum of all six face-adjacent neighbors is weighted by C1.
+
+Only compute output values for interior points where all three coordinate indices are at least 1 and at most N-2 (inclusive). Boundary elements at the edges of the array do not need to be computed.
+
+The kernel must handle array sizes larger than the number of threads in a block. Use shared memory with thread coarsening along the z-dimension for optimization. Each thread block should process multiple consecutive z-planes, loading input tiles with halo elements into shared memory to enable efficient stencil computation within the tile.
+
+The following constants are defined in `include/stencil3d.h`:
+- `BLOCK_DIM`: The number of threads per block dimension
+- `C0`: The weight of the element itself
+- `C1`: The weight applied to the sum of neighboring elements
+- `IN_TILE_DIM`: The tile size for input (includes halo elements for boundary)
+- `OUT_TILE_DIM`: The tile size for output (interior elements only)
+
+Implement the kernel with the following signature:
+
+```cuda
+__global__ void stencil3d_kernel(float *input, float *output, unsigned int N);
+```
+
+Where `N` is the dimension size of the cubic input/output arrays (N×N×N elements total).

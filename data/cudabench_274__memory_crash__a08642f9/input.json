@@ -1,0 +1,21 @@
+{
+  "task_id": "cudabench_274__memory_crash__a08642f9",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "cudabench_level3",
+  "tags": [
+    "cudabench",
+    "conv_transposed_2d",
+    "memory-crash",
+    "strict-memory-access"
+  ],
+  "source": {
+    "benchmark": "CUDABench",
+    "task_id": 274,
+    "sample_index": 5,
+    "task_name": "Conv_Transposed_2D"
+  },
+  "build_command": "nvcc -o test.out solution.cu -arch=native",
+  "test_command": "mkdir -p data && python test/generate_data.py && python test/run_sanitizer.py ./test.out && python test/compare_output.py",
+  "solution_file": "solution.cu"
+}

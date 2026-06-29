@@ -1,0 +1,21 @@
+Write a CUDA kernel to implement a radix sort of 32-bit integers using a 4-bit radix. Use CUB library primitives and cooperative groups for multi-block processing. The process from LSB to MSB should proceed through five phases: histogram computation, global prefix sum, offset distribution, local ranking, and element scattering. Utilize CUB BlockLoad with warp transpose, BlockScan for prefix sums, and shared memory unions.
+
+Implement the kernel with signature:
+```cuda
+__global__ void k_radixSort(unsigned int* keysIn_d, unsigned int* keysOut_d, unsigned int* globalHistograms_d, int numElements);
+```
+
+where `keysIn_d` is a pointer to the input array, `keysOut_d` is a pointer to the output buffer, `globalHistograms_d` is a pointer to workspace for inter-block histogram communication, and `numElements` is the array size. The kernel performs in-place sorting through buffer swapping across multiple radix passes.
+
+The kernel must use the configuration constants defined in `include/radix_sort.h` and leverage cooperative groups for grid-wide synchronization between passes.
+
+Example behavior:
+```
+k_radixSort({ 170, 45, 75, 90, 2, 802, 24, 66 }, keysOut_d, globalHistograms_d, 8)
+→ keysOut_d: { 2, 24, 45, 66, 75, 90, 170, 802 }
+
+k_radixSort({ 128, 64, 256, 32, 1024, 16 }, keysOut_d, globalHistograms_d, 6)
+→ keysOut_d: { 16, 32, 64, 128, 256, 1024 }
+```
+
+Include `include/radix_sort.h` in your solution.

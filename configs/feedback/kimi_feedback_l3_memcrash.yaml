@@ -1,0 +1,42 @@
+# v3 mem_crash supplemental — kimi_feedback_l3_memcrash (aware dispatch)
+api:
+  backend: openai
+  model: kimi-k2.6
+  base_url: <CLOUD_API_BASE_URL>  # OpenAI-compatible endpoint, e.g. https://your-provider/v1
+  api_key_env: CLOUD_API_KEY
+  temperature: 0.7
+  max_tokens: 32768
+  timeout: 300
+experiment:
+  name: kimi_feedback_l3_memcrash
+  method: iterative
+  max_iterations: 5
+  max_history_rounds: 4
+  dataset_dir: "data"
+  output_dir: "outputs/feedback/kimi_feedback_l3_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+  feedback_level: 3
+  feedback_mode: aware
+build:
+  workdir: /tmp/cuda_debugger_v3_kimi_feedback_l3
+  timeout: 300
+  test_timeout: 300
+logging:
+  level: INFO
+  save_api_responses: true

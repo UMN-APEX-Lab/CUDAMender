@@ -1,0 +1,17 @@
+{
+  "id": "kernelbench_level2_96__compile_error__fbde8731",
+  "task_family": "kernelbench",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "KernelBench",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.py",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 161,
+  "broken_start_hash": "fbde8731eb6f0aa4"
+}

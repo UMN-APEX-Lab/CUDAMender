@@ -1,0 +1,21 @@
+{
+  "task_id": "cudabench_72__memory_crash__32cc9e41",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "cudabench_level3",
+  "tags": [
+    "cudabench",
+    "batched_matrix_multiplication",
+    "memory-crash",
+    "strict-memory-access"
+  ],
+  "source": {
+    "benchmark": "CUDABench",
+    "task_id": 72,
+    "sample_index": 5,
+    "task_name": "Batched_Matrix_Multiplication"
+  },
+  "build_command": "nvcc -o test.out solution.cu -arch=native",
+  "test_command": "mkdir -p data && python test/generate_data.py && python test/run_sanitizer.py ./test.out && python test/compare_output.py",
+  "solution_file": "solution.cu"
+}

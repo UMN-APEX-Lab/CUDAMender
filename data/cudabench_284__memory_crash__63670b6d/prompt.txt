@@ -1,0 +1,20 @@
+
+### TASK SPECIFICATION
+
+Task Name:
+2D_Convolution
+
+Task Description:
+Compute the 2D convolution.
+
+Input:
+conv_input: float32, shape = (4194304,)
+conv_kernel: float32, shape = (576,)
+
+Output:
+conv_output: float32, shape = (4100625,)
+
+GPU:
+NVIDIA RTX PRO 6000 Blackwell Server Edition
+
+CUDA program:

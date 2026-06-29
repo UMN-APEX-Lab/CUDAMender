@@ -1,0 +1,23 @@
+Write a function `void fft_3d_mgpu_r2c_c2r_example(...)` that demonstrates the
+usage of the cuFFT library to perform a in-place multi-GPU real-to-complex and
+complex-to-real 3D FFT computation. The function should:
+
+- Create cuFFT plans for multi-GPU execution and set the GPU devices.
+- Allocate a single device memory descriptor and data across multiple GPUs using `cufftXtMalloc`.
+- Copy input data from host to device memory using `cufftXtMemcpy`.
+- Execute the R2C FFT plan using `cufftXtExecDescriptor`.
+- Scale the complex results after the forward FFT by a factor of 2.0 using the provided `scaleComplex` helper.
+- Execute the C2R FFT plan using `cufftXtExecDescriptor`.
+- Copy the results back to the host.
+- Clean up allocated resources including the device memory descriptor.
+
+Function signature (declared in `include/fft_mgpu.h`):
+```cpp
+void fft_3d_mgpu_r2c_c2r_example(std::array<int, 3> &dims,
+                                 std::vector<int> &gpus,
+                                 std::vector<std::complex<float>> &h_data_in,
+                                 std::vector<std::complex<float>> &h_data_out);
+```
+The parameter dims represents dimensions of the the 3D FFT transforms (dims = [nx, ny, nz]). The R2C transform should convert from nx×ny×nz real arrays to nx×ny×(nz/2+1) complex arrays, and the subsequent C2R transform should convert back from nx×ny×(nz/2+1) complex arrays to nx×ny×nz real arrays.
+
+Helper utilities (error macros, scaling kernel, and `scaleComplex` function) are available in `include/fft_helpers.h`.

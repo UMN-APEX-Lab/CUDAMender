@@ -1,0 +1,17 @@
+{
+  "id": "kernelbench_level2_3__compile_error__dd4f6cf7",
+  "task_family": "kernelbench",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "KernelBench",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.py",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 114,
+  "broken_start_hash": "dd4f6cf775fc6852"
+}

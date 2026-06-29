@@ -1,0 +1,32 @@
+Write a CUDA kernel with high occupancy to find all integers from array1 in array2 and count the occurrences of each number in array2.
+
+The kernel should enhance occupancy by utilizing an appropriate amount of shared memory for tiling and balancing the number of threads with the size of the shared memory allocation.
+
+The kernel should be implemented in `solution.cu` and must implement the signature declared in `include/count_occurrences.h`:
+
+```cpp
+__global__ void k_countOccurrences(int * array1_d,
+                                   int * array2_d,
+                                   int len1,
+                                   int len2,
+                                   int * count_d);
+```
+
+Where:
+- `array1_d`: pointer to the array of integers to be counted within another array
+- `array2_d`: pointer to the array of integers used for comparisons for each integer in array1_d
+- `len1`: size of array1_d
+- `len2`: size of array2_d
+- `count_d`: pointer to array of counts (output)
+
+**Important Execution Constraints:**
+
+The kernel will be launched with a grid and block configuration optimized for maximum GPU occupancy, not necessarily sized to cover all data elements. This means the number of blocks launched may be significantly smaller than what would be needed to assign one thread per element in array1_d.
+
+Your kernel must handle cases where the total number of threads (grid size times block size) is less than len1. Each thread may need to process multiple elements from array1_d to ensure all elements are covered.
+
+The dynamic shared memory allocation will be sized proportionally to the block size. Your kernel should use this shared memory efficiently for tiling array2_d during comparisons.
+
+Examples:
+- `k_countOccurrences({ 0, 1, 2, ..., 299998, 299999 }, { repeats 0, 1 for a total of 70 elements }, 300000, 70)` → count_d: `{ 35, 35, the rest are 0 }`
+- `k_countOccurrences({ index % 100 for all elements }, { 0, 1, 2, ..., 9 }, 200000, 10)` → count_d: `{ all elements are 1 }`

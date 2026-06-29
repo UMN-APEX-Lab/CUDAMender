@@ -1,0 +1,14 @@
+{
+  "task_id": "cusolver_0",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "cusolver",
+    "linear-algebra",
+    "iterative-refinement"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu -arch=native -lcusolver",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

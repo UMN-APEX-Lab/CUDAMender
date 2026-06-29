@@ -1,0 +1,21 @@
+Write a CUDA kernel to compute the nearest neighbors of every point in an array-A w.r.t array-B in N-Dimension, where N=3 for 3-Dimension, using shared memory to load array-B and compare it to every point in array-A to find the nearest neighbors.
+
+The function signature is defined in `include/k_nearest_neighbors.h`:
+```cpp
+__global__ void k_nearestNeighbors(const float* inputVectorA_d, int nA, float* inputVectorB_d, int nB, int* nearestNeighborIndex);
+```
+
+For every 3D point in `inputVectorA_d`, compute the nearest neighbor from `inputVectorB_d`. The sizes of the inputs are given by `nA` and `nB`, and the result indices are stored in `nearestNeighborIndex`.
+
+**Examples:**
+```
+k_nearestNeighbors({{-0.38,-2.13,0.69},{-5.7,-4.5,-0.95},{9.23,7.69,9.65}}, 3,
+                   {{-9.57,-0.59,8.41},{-6.53,6.68,8.02},{5.11,-9.24,-1.19}}, 3,
+                   nearestNeighborIndex)
+→ nearestNeighborIndex: {2,0,1}
+
+k_nearestNeighbors({{-3.44,-0.71,-5.57},{-1.28,-8.79,-5.71},{7.92,2.8,-8.56},{2.07,5.06,-8.3},{-2.45,-9.14,8.19}}, 5,
+                   {{9.26,8.7,-4.33},{-8.07,0.91,7.17},{-5.81,-3.63,-7.7},{-8.4,2.07,-8.9}}, 4,
+                   nearestNeighborIndex)
+→ nearestNeighborIndex: {2,2,0,0,1}
+```

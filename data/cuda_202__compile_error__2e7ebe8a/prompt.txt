@@ -1,0 +1,44 @@
+Write a CUDA function that creates and launches a graph pipeline for image processing on a sequence of frames.
+
+Implement the function with this signature:
+```cpp
+void runGraph(float* inpFrame, float* inpFrame_d, size_t frameHeight, size_t frameWidth,
+              size_t numFrames, float gammaValue, float contrastValue, float brightnessValue,
+              float* outRGB2Gray_d, float* outFrame_d, float* outFrame_h, cudaStream_t& stream);
+```
+
+The function must:
+1. Create a CUDA graph containing a pipeline with these nodes (in order):
+   - Host-to-device memory copy node (input frame)
+   - `k_rgbToGray` kernel node (converts RGB to grayscale)
+   - `k_gammaCorrection` kernel node (applies gamma, contrast, brightness)
+   - Device-to-host memory copy node (output frame)
+
+2. Create the graph once and launch it for each frame in the sequence, updating only the input and output data pointers between launches
+
+Parameters:
+- `inpFrame`: Host pointer to input frames (RGB format, all frames concatenated)
+- `inpFrame_d`: Device pointer for input frame staging
+- `frameHeight`, `frameWidth`: Dimensions of each frame
+- `numFrames`: Total number of frames to process
+- `gammaValue`, `contrastValue`, `brightnessValue`: Image adjustment parameters
+- `outRGB2Gray_d`: Device pointer for intermediate grayscale output
+- `outFrame_d`: Device pointer for final output staging
+- `outFrame_h`: Host pointer for final output (all processed frames)
+- `stream`: CUDA stream for graph execution
+
+The helper kernels are declared in `include/graph_pipeline.h`:
+- `k_rgbToGray`: Converts RGB image to grayscale
+- `k_gammaCorrection`: Applies gamma correction, contrast, and brightness adjustments
+
+Example input/output:
+```
+Input: 2 frames of 3x3 RGB images
+Frame 0 RGB: {0.080,0.606,0.358,0.087,0.093,0.590,0.067,0.652,0.770}
+Frame 1 RGB: {0.856,0.952,0.757,0.137,0.550,0.372,0.943,0.084,0.121}
+Parameters: gamma=0.472, contrast=0.104, brightness=0.724
+
+Output: 2 frames of 3x3 grayscale images
+Frame 0: {0.805,0.819,0.809,0.772,0.794,0.794,0.810,0.781,0.784}
+Frame 1: {0.813,0.796,0.810,0.793,0.812,0.790,0.791,0.810,0.805}
+```

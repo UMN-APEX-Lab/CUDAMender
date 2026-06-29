@@ -1,0 +1,32 @@
+Write a CUDA kernel for computing an inclusive prefix sum on an integer array. Use warp-level shuffle operations for efficient intra-block scan and store each block's total in global memory to compute block-level offsets for the final result.
+
+Implement the kernel according to the signature in `include/prefix_sum.h`:
+
+```cuda
+__global__ void k_prefixSum(int* inputArray_d, int* outputArray_d,
+                           int* blockSums_d, int totalElementCount, int warpsPerBlock);
+```
+
+**Parameters:**
+- `inputArray_d`: Device pointer to the input array
+- `outputArray_d`: Device pointer where the computed inclusive prefix sum will be stored
+- `blockSums_d`: Device pointer used to store block totals for cross-block coordination (size must be at least gridDim.x + 1)
+- `totalElementCount`: The number of elements in the input array
+- `warpsPerBlock`: The number of warps per block
+
+**Examples:**
+```
+k_prefixSum({3,1,4,1,5}, outputArray_d, blockSums_d, 5, warpsPerBlock) -> {3,4,8,9,14}
+k_prefixSum({1,1,1,1,1}, outputArray_d, blockSums_d, 5, warpsPerBlock) -> {1,2,3,4,5}
+```
+
+**Requirements:**
+- Use warp-level shuffle operations for efficient intra-warp scanning
+- Use cooperative groups for grid-wide synchronization
+- The kernel will be launched cooperatively and may have a grid size smaller than required to process all elements in a single pass
+- Handle cases where the array cannot be fully processed by the available threads in one iteration
+- Store per-block totals in global memory to enable cross-block coordination
+- Implement cross-block coordination to compute correct global offsets across block boundaries
+- Maintain necessary state across multiple processing passes to ensure correctness of the global prefix sum
+- Use grid-wide synchronization at appropriate points to prevent race conditions and ensure visibility of shared data
+- Ensure the final output correctly represents the inclusive prefix sum across the entire array

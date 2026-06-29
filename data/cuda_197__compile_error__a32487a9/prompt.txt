@@ -1,0 +1,27 @@
+Write a CUDA kernel to perform warp-based stream compaction on 32-element segments of a float array, and compact only the elements that exceed a threshold value. In each segment, the output should first include compacted elements, followed by default values, and the results of each segment should be stored independently.
+
+The kernel signature is provided in `include/kernel_contract.h`:
+
+```cpp
+__global__ void k_compactElementsOfSegmentsWithThreshold(
+    int numSegments,
+    float* array_d,
+    float threshold,
+    float defaultValue
+);
+```
+
+Where:
+- `numSegments`: number of segments (each segment is 32 elements)
+- `array_d`: array containing all segments
+- `threshold`: value used for predication with greater-than operator
+- `defaultValue`: value that replaces any non-compacted element's value
+
+Example behavior:
+```
+>>> k_compactElementsOfSegmentsWithThreshold(1, { 0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, rest are 0.0f }, 0.5f, 0.0f)
+    -> array_d: { 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, rest are 0.0f }
+
+>>> k_compactElementsOfSegmentsWithThreshold(1, { -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, rest are 0.0f }, 0.0f, 0.0f)
+    -> array_d: { 1.0f, 1.0f, 1.0f, 1.0f, rest are 0.0f }
+```

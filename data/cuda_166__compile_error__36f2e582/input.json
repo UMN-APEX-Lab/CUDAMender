@@ -1,0 +1,16 @@
+{
+  "task_id": "cuda_166",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "kernel",
+    "coalesced-access",
+    "bit-manipulation",
+    "vectorized-loads",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

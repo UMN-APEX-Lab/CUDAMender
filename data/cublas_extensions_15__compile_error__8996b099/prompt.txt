@@ -1,0 +1,14 @@
+Write a function `void scale_vector(...)` that demonstrates the usage of the cuBLAS library to scale a vector of size `n` using `cublasScalEx`. The scaling factor is `alpha`. The function should accept host data and handle all device memory allocation, data transfers, and cleanup internally.
+
+Implement the function declared in `include/scale_vector.h`:
+```cpp
+void scale_vector(int n, double alpha,
+                  const std::vector<double>& in,
+                  std::vector<double>& out);
+```
+
+The function should:
+- Use `cublasScalEx` for the scaling operation
+- Manage cuBLAS handle and CUDA stream creation/destruction
+- Handle all memory allocation and data transfers
+- Scale the input vector by alpha and store the result in the output vector

@@ -1,0 +1,51 @@
+Write a function that utilizes CUDA graphs. It should include a node for the kernel `k_calculate` (declared in `include/graph_ops.h`) to obtain the squared value of the input matrix and a node for the in-place feedback loop, which is a device-to-device copy from output to input. This output will serve as input for the next iteration of the graph, executing this repeatedly for k times, where k is a positive integer.
+
+The signature of the function is:
+```cpp
+void runGraph(int k, float *dataIn_d, float *dataOut_d, int *constantParams_d, int maxActiveBlocks, cudaStream_t stream)
+```
+
+Where:
+- `k` specifies the number of launches for the CUDA graph
+- `dataIn_d` is a pointer to an array of float elements that hold the input values in device memory
+- `dataOut_d` is a pointer to an array of float elements that holds the output values in device memory
+- `constantParams_d` is a pointer to an array of integer elements representing the constants of the algorithm
+- `maxActiveBlocks` is an integer indicating the maximum number of active blocks
+- `stream` is the CUDA stream used to launch the graph
+
+The kernel `k_calculate` has the signature:
+```cpp
+__global__ void k_calculate(float *dataIn_d, float *dataOut_d, int *constantParams_d)
+```
+
+Where:
+- `dataIn_d` is a pointer to the matrix for which the power is to be calculated
+- `dataOut_d` is a pointer to the square of the matrix from dataIn_d
+- `constantParams_d` is a pointer to the array of parameters, with the first item representing the matrix size
+
+Constants and helper macros are available in `include/graph_config.h`.
+
+Example behavior:
+```
+runGraph(3, {
+    1.00f, 1.00f, 1.00f,
+    1.00f, 1.00f, 1.00f,
+    1.00f, 1.00f, 1.00f
+}, { 3 }) -> data_h: {
+    2187.0f, 2187.0f, 2187.0f,
+    2187.0f, 2187.0f, 2187.0f,
+    2187.0f, 2187.0f, 2187.0f
+}
+
+runGraph(5, {
+    1.00f, 0.00f, 0.00f, 0.00f,
+    0.00f, 1.00f, 0.00f, 0.00f,
+    0.00f, 0.00f, 1.00f, 0.00f,
+    0.00f, 0.00f, 0.00f, 1.00f
+}, { 4 }) -> data_h: {
+    1.00f, 0.00f, 0.00f, 0.00f,
+    0.00f, 1.00f, 0.00f, 0.00f,
+    0.00f, 0.00f, 1.00f, 0.00f,
+    0.00f, 0.00f, 0.00f, 1.00f
+}
+```

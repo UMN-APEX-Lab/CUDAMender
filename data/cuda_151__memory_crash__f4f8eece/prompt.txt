@@ -1,0 +1,39 @@
+Write a CUDA kernel to test the primality of a list of numbers using the Miller-Rabin algorithm.
+The kernel should be launched with different configurations of blocksize.
+
+Your implementation must be in `solution.cu` and include `miller_rabin.h`. Implement the following kernel signature:
+
+```cuda
+__global__ void k_millerRabin(unsigned long long *inputNumbers, unsigned long long *primalityResults, int numberOfElements);
+```
+
+Where:
+- `inputNumbers`: array of input numbers to be tested for primality
+- `primalityResults`: pointer to the array where the primality test results will be stored (the number is stored if prime, else 0 if composite)
+- `numberOfElements`: total number of inputNumbers
+
+**Parallelization Requirements:**
+
+The kernel must use warp-level cooperative parallelism where each warp collectively tests a single number.
+Within each warp, different threads must test the same number against different witnesses (base values) in parallel.
+Each thread should select its witness based on its position within the warp, starting from base 2 and incrementing for each subsequent thread.
+All threads in a warp must agree on primality for the number to be considered prime.
+
+The kernel should use dynamic shared memory for coordination within each block.
+You'll need to store intermediate Miller-Rabin decomposition values that can be shared across threads in the same warp.
+The helper function `dynamicSMemSizeMillerRabin` computes the required shared memory size.
+
+Each warp processes one number at a time. If there are more numbers than warps in the grid, warps should process multiple numbers in a strided pattern.
+
+The Miller-Rabin test involves decomposing each number n as n-1 = d * 2^r where d is odd.
+Then for each witness base a, compute a^d mod n and check for composite witnesses through repeated squaring.
+
+Examples:
+```
+>>> k_millerRabin({17, 561, 19, 7919, 23, 1009, 10007, 15}, primalityResults, 8)
+    -> primalityResults({17, 0, 19, 7919, 23, 1009, 10007, 0})
+>>> k_millerRabin({29, 35, 31, 10037, 13, 999331, 7919, 77}, primalityResults, 8)
+    -> primalityResults({29, 0, 31, 10037, 13, 999331, 7919, 0})
+```
+
+Note: The test cases include Carmichael numbers (like 561) that require testing with multiple witnesses to correctly identify as composite.

@@ -1,0 +1,14 @@
+Implement the device-level functions `reduce_warp` and `reduce_threadblock` as declared in `include/reduce_warp.h` to perform warp-level and thread-block-level sum reductions using warp primitives.
+
+The functions must minimize data spread across threads within a warp to enhance data locality and performance.
+
+The kernel that uses your functions is defined in `src/kernel_wrapper.cu`:
+```cuda
+__global__ void kernel(float *pOut, const float *pIn);
+```
+
+The required function signatures are:
+```cuda
+__device__ float reduce_warp(float v);
+__device__ float reduce_threadblock(float v, float *smem);
+```

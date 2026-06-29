@@ -1,0 +1,28 @@
+Write a CUDA kernel to compute Local Binary Patterns (LBP) for 8-bit grayscale images with a fixed width of 1024.
+
+Each thread should:
+1. Load center pixels and halo regions into shared memory
+2. Synchronize
+3. Compute 8-neighbor LBP codes for interior pixels by comparing each neighbor with the center pixel (neighbor >= center contributes bit 1, else 0) in clockwise order starting from top-left
+4. Assemble an 8-bit code
+5. Set boundary pixels (pixels on the image edges) to 0
+
+Implement the function with signature:
+```cuda
+__global__ void k_computeLBP(const unsigned char* input_d, unsigned char* output_d, int width, int height)
+```
+
+Where:
+- `input_d`: Pointer to the input grayscale image
+- `output_d`: Pointer to the output LBP image
+- `width`, `height`: Dimensions of image
+
+The kernel should use shared memory for efficiency and process tiles using a grid-stride loop pattern.
+
+See `include/lbp.h` for the complete interface and bit position constants.
+
+Examples:
+```
+k_computeLBP({49, 160, 169, 251, 119, 68, 155, 102, 36, 131}, output_d, 1024, 2048) → output_d: {0, 86, 154, 0, 111, 255, 142, 143, 127, 110}
+k_computeLBP({150, 211, 10, 99, 150, 219, 1, 44, 87, 175}, output_d, 1024, 4096) → output_d: {0, 72, 255, 126, 246, 128, 255, 254, 254, 210}
+```

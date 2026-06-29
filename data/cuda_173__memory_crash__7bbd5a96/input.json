@@ -1,0 +1,22 @@
+{
+  "task_id": "cuda_173",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "compute_eval_2026_1",
+  "tags": [
+    "compute-eval",
+    "cuda-kernels",
+    "memory-crash",
+    "strict-memory-access"
+  ],
+  "source": {
+    "benchmark": "ComputeEval",
+    "release": "2026-1",
+    "task_id": "CUDA/173",
+    "sample_index": 4,
+    "group": "cuda-kernels"
+  },
+  "build_command": "nvcc -I include -o test.out solution.cu src/im2col_kernel.cu test/test_main.cu -gencode arch=compute_80,code=[sm_80,compute_80]",
+  "test_command": "python test/run_sanitizer.py ./test.out",
+  "solution_file": "solution.cu"
+}

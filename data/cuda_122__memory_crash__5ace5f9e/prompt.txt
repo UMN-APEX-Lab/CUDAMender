@@ -1,0 +1,37 @@
+Write a CUDA kernel to sort an array using merge sort. The implementation uses two device functions: one to sort elements within each block, and another to merge sorted blocks into a final sorted array.
+
+**Function Headers** (in `include/merge_sort.h`):
+- `__global__ void k_mergeSort(float *input_d, float *sortedBlocks_d, float *output_d, int numElements)` - Main kernel that calls both device functions
+- `__device__ void d_mergeSortWithinBlock(float *input_d, float *sortedBlocks_d, int numElements)` - Sorts elements within each block
+- `__device__ void d_mergeSortAcrossBlocks(float *sortedBlocks_d, float *output_d, int numElements)` - Merges sorted blocks into final result
+
+**Constants** (in `include/cuda_common.h`):
+- `BLOCKSIZE` = 4 (threads per block)
+- `MAXVALUE` = 9999 (for padding)
+- `TOLERANCE` = 1e-2 (for validation)
+
+**Implementation Requirements:**
+
+**d_mergeSortWithinBlock:**
+- Each block sorts BLOCKSIZE consecutive elements from its portion of input_d
+- Use shared memory (declared with `extern __shared__ float`; BLOCKSIZE * sizeof(float) is provided at kernel launch)
+- Pad out-of-bounds array positions with MAXVALUE
+- Write sorted results to sortedBlocks_d
+
+**d_mergeSortAcrossBlocks:**
+- Merge the sorted blocks from sortedBlocks_d into a final sorted array
+- Requires grid-wide synchronization since blocks must coordinate: use CUDA cooperative groups by including `<cooperative_groups.h>` and calling `cooperative_groups::this_grid().sync()` for grid-level synchronization
+- Ensure output_d contains the final completely sorted result
+
+**k_mergeSort:**
+- Call d_mergeSortWithinBlock then d_mergeSortAcrossBlocks
+- Will be launched with cudaLaunchCooperativeKernel (enables cooperative groups functionality)
+
+**Examples:**
+```
+k_mergeSort({25, 57, 2, 38, 49, 11, 79, 88, 5, 3}, sortedBlocks_d, output_d, 10)
+→ output_d: {2, 3, 5, 11, 25, 38, 49, 57, 79, 88}
+
+k_mergeSort({17, 1, 15, 3, 18, 2, 11, 12}, sortedBlocks_d, output_d, 8)
+→ output_d: {1, 2, 3, 11, 12, 15, 17, 18}
+```

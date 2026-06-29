@@ -1,0 +1,18 @@
+Write a function `void trtri(...)` that demonstrates the usage of the cuSOLVER library to compute the inverse of a triangular matrix using the `cusolverDnXtrtri` function.
+
+Your implementation must:
+- Accept a triangular matrix `A` of size `n x n` in row-major order.
+- Store the resulting inverse matrix in `A`.
+- Accept host data and handle all device memory allocation, data transfers, and cleanup internally.
+
+Function signature (declared in `include/trtri.h`):
+```cpp
+void trtri(int n, std::vector<double>& A, cublasFillMode_t uplo,
+           cublasDiagType_t diag);
+```
+
+The function parameters are:
+- `n`: dimension of the square matrix
+- `A`: input/output triangular matrix in row-major order
+- `uplo`: specifies whether the matrix is upper or lower triangular (e.g., `CUBLAS_FILL_MODE_UPPER`)
+- `diag`: specifies whether the matrix is unit or non-unit diagonal (e.g., `CUBLAS_DIAG_NON_UNIT`)

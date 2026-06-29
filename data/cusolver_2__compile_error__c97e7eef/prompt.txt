@@ -1,0 +1,13 @@
+Write a function `void compute_svd_batched(...)` that demonstrates the usage
+of the cuSOLVER library to compute the Singular Value Decomposition (SVD)
+for a batch of matrices using `cusolverDnSgesvdaStridedBatched`. This function
+should accept host data and handle all device memory allocation, data transfers,
+and cleanup internally.
+
+Function signature:
+```
+void compute_svd_batched(int batchSize, int m, int n, const std::vector<float>&
+A, std::vector<float>& S, std::vector<float>& U, std::vector<float>& V);
+```
+
+The function declaration and required utility macros are provided in `include/compute_svd_batched.h` and `include/cusolver_utils.h`.

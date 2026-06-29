@@ -1,0 +1,34 @@
+Write a CUDA function that computes histograms for the R, G, and B channels from an RGBA image with equally sized bins using the CUB library.
+
+The image is stored as an interleaved array of 32-bit pixels, each with four 8-bit unsigned char channels.
+
+Implement the following function in `solution.cu`:
+
+```cpp
+void calcMultiHistogram(uint8_t* inputData_d, int** histogram_d,
+                        int* numLevels_h, unsigned int* lowerLevel_h,
+                        unsigned int* upperLevel_h, int numPixels,
+                        cudaStream_t stream);
+```
+
+**Parameters:**
+- `inputData_d`: Pointer to the input sequence of data samples (device memory)
+- `histogram_d`: Pointer to the histogram counter output array (device memory)
+- `numLevels_h`: Pointer to array containing number of boundaries for histogram samples (host memory)
+- `lowerLevel_h`: Pointer to the array containing lower sample value bound for the lowest histogram bin (host memory)
+- `upperLevel_h`: Pointer to the array containing upper sample value bound for the highest histogram bin (host memory)
+- `numPixels`: Number of pixels in input image
+- `stream`: Handle for asynchronous operations
+
+Your solution should use `cub::DeviceHistogram::MultiHistogramEven` to compute the histograms.
+
+**Example:**
+```
+Input: {{2, 6, 7, 5}, {3, 0, 2, 1}, {7, 0, 6, 2}, {0, 6, 7, 5}, {3, 0, 2, 6}}
+       numLevels={5, 5, 5}, lowerLevel={0, 0, 0}, upperLevel={256, 256, 256}
+Output: histogram_d[0] = {5, 0, 0, 0}  (R channel)
+        histogram_d[1] = {5, 0, 0, 0}  (G channel)
+        histogram_d[2] = {5, 0, 0, 0}  (B channel)
+```
+
+Include the contract header `histogram.h` and the helpers header `histogram_helpers.h` from the `include/` directory.

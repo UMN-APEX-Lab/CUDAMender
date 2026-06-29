@@ -1,0 +1,19 @@
+Write a function `void spsv_csr_example(...)` that demonstrates the usage of the
+cuSPARSE library to solve a sparse triangular system using `cusparseSpSV`. The
+function should:
+- Handle matrices in CSR (Compressed Sparse Row) format.
+- Accept host data and handle all device memory allocation, data transfers, and
+  cleanup internally.
+
+Your implementation should be placed in `solution.cu` and must include:
+- `include/spsv_csr.h` for the function contract
+- `include/cusparse_utils.h` for error-checking macros
+
+Function signature:
+```cpp
+void spsv_csr_example(int A_num_rows, int A_num_cols, int A_nnz,
+                      const std::vector<int>& hA_csrOffsets,
+                      const std::vector<int>& hA_columns,
+                      const std::vector<float>& hA_values,
+                      const std::vector<float>& hX, std::vector<float>& hY);
+```

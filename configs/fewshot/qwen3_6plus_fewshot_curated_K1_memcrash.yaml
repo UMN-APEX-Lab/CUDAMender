@@ -1,0 +1,56 @@
+# v3 mem_crash supplemental — qwen3_6plus_fewshot_curated_K1_memcrash
+# ============================================================
+# Examples are HAND-PICKED per task in evaluation/few_shot_curated.json
+# (subagent-generated, semantic match by task family + error category +
+#  algorithmic similarity).
+# Pool source dirs same as random/matched configs; pairs not in pool
+# (filtered by single-step-recovery + ≤100-line rule) are skipped with warning.
+#
+# Output: outputs_few_shot/qwen3_6plus/curated_K1/<timestamp>/
+
+api:
+  backend: openai
+  model: qwen3.6-plus
+  base_url: <CLOUD_API_BASE_URL>  # OpenAI-compatible endpoint, e.g. https://your-provider/v1
+  api_key_env: CLOUD_API_KEY
+  temperature: 0.7
+  max_tokens: 32768
+  timeout: 300
+experiment:
+  name: qwen3_6plus_fewshot_curated_K1_memcrash
+  method: iterative
+  few_shot_strategy: curated
+  few_shot_k: 1
+  few_shot_pair_pool_seed: 42
+  few_shot_pool_committee_dirs:
+  - evaluation/outputs/gemma4/20260424_123214
+  - evaluation/outputs/glm_4_7/20260424_151941
+  max_iterations: 5
+  max_history_rounds: 4
+  dataset_dir: "data"
+  output_dir: "outputs/fewshot/qwen3_6plus_fewshot_curated_K1_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+  few_shot_curated_file: evaluation/few_shot_curated.json
+build:
+  workdir: /tmp/cuda_debugger_v3_qwen3_6plus_fewshot_curated_K1
+  timeout: 300
+  test_timeout: 300
+logging:
+  level: INFO
+  save_api_responses: true

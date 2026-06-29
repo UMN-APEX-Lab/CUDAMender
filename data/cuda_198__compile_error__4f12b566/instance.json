@@ -1,0 +1,17 @@
+{
+  "id": "cuda_198__compile_error__4f12b566",
+  "task_family": "cuda",
+  "error_category": "compile_error",
+  "difficulty": "hard",
+  "upstream_library": null,
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 170,
+  "broken_start_hash": "4f12b566655df492"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "kernelbench_level1_81__logic_error__ca636d37",
+  "task_family": "kernelbench",
+  "error_category": "logic_error",
+  "difficulty": "medium",
+  "upstream_library": "KernelBench",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.py",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 106,
+  "broken_start_hash": "ca636d3761d91c43"
+}

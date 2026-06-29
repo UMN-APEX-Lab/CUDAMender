@@ -1,0 +1,49 @@
+Implement the conjugate gradient solver declared in `include/conjugate_gradient.h`.
+
+The function should solve linear equations Ax = B using the matrix conjugate gradient method.
+The function performs iterative computations to find the optimal solution vector x.
+The maximum number of iterations is pre-defined as MAX_ITERATIONS (1000).
+
+Initial State Requirements:
+The caller is responsible for initializing the input vectors to their proper starting values before calling this function.
+At function entry, the function expects the following initial state:
+- vectorX_d contains the initial solution guess (typically all zeros)
+- residual_d contains vector B (the right-hand side of the linear equation Ax = B). Since the initial solution is typically zero, this represents the initial residual r = B - A*0 = B
+- searchDir_d contains the initial search direction (typically initialized to equal the initial residual)
+
+The function will iteratively update these vectors in place to compute the solution.
+
+Convergence Check Requirement:
+In each iteration, after updating the residual vector, compute the L2 norm of the new residual.
+If this norm falls below the TOLERANCE threshold, the algorithm should terminate immediately, as convergence has been achieved.
+The convergence check should be performed AFTER updating the residual in each iteration, not before.
+
+Function signature:
+```cpp
+void k_conjugateGradientKernel(cublasHandle_t cublasHandle, int matrixSize,
+                               double* residual_d, double* matrixA_d,
+                               double* searchDir_d, double* vectorX_d,
+                               double* productAdir_d);
+```
+
+Parameters:
+- `cublasHandle`: handle to cuBLAS library context
+- `matrixSize`: size of the square matrix A
+- `residual_d`: pointer to device memory containing the initial residual vector (initialized to vector B by the caller). This vector will be updated during iterations to track the current residual
+- `matrixA_d`: pointer to square matrix A stored in device memory (column-major format)
+- `searchDir_d`: pointer to device memory containing the initial search direction (initialized by the caller). This vector will be updated during iterations
+- `vectorX_d`: pointer to device memory containing the initial solution guess (typically zeros). This will be updated to contain the final solution
+- `productAdir_d`: pointer to device memory for storing intermediate computation results (matrix-vector product)
+
+Example usage (showing initial state):
+```
+>>> // For system: [4, 1; 1, 3] * x = [1, 2]
+>>> // Initial state: residual_d = {1.0, 2.0}, searchDir_d = {1.0, 2.0}, vectorX_d = {0.0, 0.0}
+>>> k_conjugateGradientKernel(cublasHandle, 2, residual_d, {4.0, 1.0, 1.0, 3.0}, searchDir_d, vectorX_d, productAdir_d)
+    vectorX_d: {0.09091, 0.63636}
+
+>>> // For system: diagonal matrix [10, 0, 0; 0, 20, 0; 0, 0, 30] * x = [10, 40, 90]
+>>> // Initial state: residual_d = {10.0, 40.0, 90.0}, searchDir_d = {10.0, 40.0, 90.0}, vectorX_d = {0.0, 0.0, 0.0}
+>>> k_conjugateGradientKernel(cublasHandle, 3, residual_d, {10.0, 0.0, 0.0, 0.0, 20.0, 0.0, 0.0, 0.0, 30.0}, searchDir_d, vectorX_d, productAdir_d)
+    vectorX_d: {1.0, 2.0, 3.0}
+```

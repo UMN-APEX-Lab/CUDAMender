@@ -1,0 +1,24 @@
+Write a CUDA kernel to perform matrix multiplication utilizing Tensor Cores by using inline PTX mma instruction of dimension m16n8k16.
+
+Include the header `include/mma_kernel.h` which provides:
+- Kernel signature: `__global__ void k_mmaM16N8K16ArowBcol(__nv_bfloat16 *rowMajorA_d, __nv_bfloat16 *colMajorB_d, float *resultMatrixC_d, int mDim, int nDim, int kDim)`
+- Constants: `MMA_M = 16`, `MMA_N = 8`, `MMA_K = 16`
+
+**Requirements**:
+- Input matrix A is stored using row major indexing
+- Input matrix B is stored using column major indexing
+- Use mma instruction: `mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32`
+- Load data into shared memory tiles while ensuring correct indexing order for A and B
+- Load fragments via `ldmatrix` instruction before performing mma operation
+
+**Parameters**:
+- `rowMajorA_d`: Input Matrix A stored in row major order (dimensions: mDim × kDim)
+- `colMajorB_d`: Input Matrix B stored in column major order (dimensions: kDim × nDim)
+- `resultMatrixC_d`: Output result matrix C (dimensions: mDim × nDim)
+- `mDim, nDim, kDim`: Leading dimensions of the problem
+
+**Example**:
+```
+k_mmaM16N8K16ArowBcol({3, 6, 7, 5}, {3, 5}, resultMatrixC_d, 2, 1, 2) -> resultMatrixC_d: {44, 43}
+k_mmaM16N8K16ArowBcol({3, 6, 17, 15}, {13, 15}, resultMatrixC_d, 2, 1, 2) -> resultMatrixC_d: {294, 303}
+```

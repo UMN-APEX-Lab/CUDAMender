@@ -1,0 +1,16 @@
+{
+  "task_id": "cusolver_2",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "cusolver",
+    "svd",
+    "batched",
+    "linear-algebra",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu test/*.cu -arch=native -lcusolver",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

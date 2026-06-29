@@ -1,0 +1,16 @@
+{
+  "task_id": "cuda_180",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "cuda-graphs",
+    "matrix-multiplication",
+    "iterative-computation",
+    "device-memory",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu kernel_helper.cu test/*.cu -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

@@ -1,0 +1,20 @@
+
+### TASK SPECIFICATION
+
+Task Name:
+Conv_Transposed_2D
+
+Task Description:
+Compute the Conv_Transposed_2D kernel on GPU using CUDA.
+
+Input:
+matA: float32, shape = (147456, 64)
+matB: float32, shape = (64, 256)
+
+Output:
+matC_out: float32, shape = (147456, 256)
+
+GPU:
+NVIDIA RTX PRO 6000 Blackwell Server Edition
+
+CUDA program:

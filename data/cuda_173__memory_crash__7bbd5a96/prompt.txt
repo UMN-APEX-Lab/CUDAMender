@@ -1,0 +1,32 @@
+Write a CUDA kernel to perform a convolution operation using Tensor Cores. Achieve this by writing a matrix multiplication kernel based on the inline mma PTX assembly instruction of shape m16n8k8, with the input data types for matrix A and B being bf16, with their respective layout being row major and column major for mma instruction, the final result matrix will be of f32 datatype.
+
+The signature of the mma kernel is:
+```cpp
+__global__ void k_mmaTensorConvMatMul(__nv_bfloat16 *inputMatrixA_d, __nv_bfloat16 *inputMatrixB_d, float *outputMatrix_d, int mDim, int nDim, int kDim)
+```
+where `inputMatrixA_d` is the first input matrix with dimensions mDim × kDim, `inputMatrixB_d` is the second input matrix with dimensions kDim × nDim, and `outputMatrix_d` is the output matrix with dimensions mDim × nDim.
+
+The kernel must use the following device helper functions defined in `include/mma_tensor_conv.h`:
+
+To convert an address pointer to shared memory state space for usage with ldmatrix instruction:
+```cpp
+__device__ __forceinline__ uint32_t d_cvtaToSharedU32(const void* ptr)
+```
+
+To store the 16x8 wmma output tile:
+```cpp
+__device__ __forceinline__ void d_storeMatrixTile16x8_f32(float* dst, float reg[4], int n)
+```
+
+The solution must use an already available kernel `k_im2ColTransform(...)` to perform the image to column (im2col) transformation on the input image. It will be used to represent the convolution operation as simple matrix multiplication and will ensure proper padding of the input to make it compatible with the mma kernel's allowable dimensions (M multiple of 16, image size multiple of 8, K padded to multiple of 16).
+
+The helper image to column transformation kernel signature is:
+```cpp
+__global__ void k_im2ColTransform(__nv_bfloat16 *input, __nv_bfloat16 *weights, __nv_bfloat16 *im2ColPad, __nv_bfloat16 *weightPad, int channels, int inputHeight, int inputWidth, int kernelHeight, int kernelWidth, int pad, int stride, int outHeight, int outWidth, int numFilters, int padK)
+```
+
+The test cases will include images with a varying number of channels (e.g., 1 for grayscale, 3 for RGB), and the value for each channel within a given pixel at location (x, y) will be between 0 and 1.
+
+Example calls:
+- `k_mmaTensorConvMatMul({0.23, 0.34, 0.11, 0.58}, {0.77, 0.88}, outputMatrix_d, 2, 1, 2)` → `outputMatrix_d`: {0.4763, 0.5951}
+- `k_mmaTensorConvMatMul({0.62, 0.71, 0.41, 0.38}, {0.22, 0.12}, outputMatrix_d, 2, 1, 2)` → `outputMatrix_d`: {0.2216, 0.1358}

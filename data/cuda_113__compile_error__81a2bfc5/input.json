@@ -1,0 +1,16 @@
+{
+  "task_id": "cuda_113",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "curated_cuda_pool",
+  "tags": [
+    "cooperative-groups",
+    "device-memory",
+    "stencil-computation",
+    "iterative-solver",
+    "perf-sensitive"
+  ],
+  "build_command": "nvcc -I include -o test.out solution.cu device_memory.cu test/*.cu -rdc=true -arch=native",
+  "test_command": "./test.out",
+  "solution_file": "solution.cu"
+}

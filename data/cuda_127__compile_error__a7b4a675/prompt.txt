@@ -1,0 +1,24 @@
+Write a CUDA kernel to compute the total angular momentum of a system of particles using a warp parallel reduction. Each thread should be responsible for computing the angular momentum contributed by one particle.
+
+The kernel should have the following signature:
+```cpp
+__global__ void k_computeAngularMomentum(const float *mass_d, const float3 *pos_d, const float3 *vel_d, float3 *totalAM_d, unsigned int particleCount);
+```
+
+Where:
+- `mass_d` is an array of particle masses
+- `pos_d` is an array of float3 containing particle positions with respect to the origin
+- `vel_d` is an array of float3 containing particle velocities
+- `totalAM_d` is a pointer to a single float3 in global memory where the total angular momentum (Lx, Ly, Lz) is stored
+- `particleCount` is the total number of particles in the system
+
+The kernel should be implemented in `solution.cu` and use the declarations from `include/angular_momentum.h`.
+
+Example:
+```
+k_computeAngularMomentum(mass_d:{4.370861e+00f, 9.556429e+00f},
+                         pos_d:{{2.319939e+00f, 9.865848e-01f, -3.439814e+00f}, {-3.440055e+00f, -4.419164e+00f, 3.661761e+00f}},
+                         vel_d:{{2.022300e-01f, 4.161452e-01f, -9.588310e-01f}, {9.398197e-01f, 6.648853e-01f, -5.753218e-01f}},
+                         totalAM_d:{0.0f, 0.0f, 0.0f},
+                         particleCount:2) -> totalAM_d: {3.152112e+00, 2.065611e+01, 2.117977e+01}
+```

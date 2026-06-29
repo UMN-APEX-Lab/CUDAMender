@@ -1,0 +1,20 @@
+
+### TASK SPECIFICATION
+
+Task Name:
+Batched_Matrix_Multiplication
+
+Task Description:
+Compute the Batched_Matrix_Multiplication kernel on GPU using CUDA.
+
+Input:
+batchA: float32, shape = (16, 512, 256)
+batchB: float32, shape = (16, 256, 128)
+
+Output:
+batchC_out: float32, shape = (16, 512, 128)
+
+GPU:
+NVIDIA RTX PRO 6000 Blackwell Server Edition
+
+CUDA program:

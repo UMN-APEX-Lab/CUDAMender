@@ -1,0 +1,22 @@
+Write a function `void compute_svd(...)` as declared in `include/compute_svd.h` that uses the cuSOLVER library function `cusolverDnXgesvdr` to compute a rank-k approximation of the Singular Value Decomposition (SVD) using randomized algorithms.
+
+The function should:
+- Compute a randomized SVD approximation using the provided rank, oversampling parameter p, and iteration count.
+- Store the singular values in `S`, and the left and right singular vectors in `U` and `V`, respectively.
+- Use economy mode (character 'S') for both the left and right singular vector mode parameters (jobu and jobv).
+- Accept host data and handle all device memory allocation, data transfers, and cleanup internally.
+- Create and configure the necessary cuSOLVER handle and parameter objects (cusolverDnParams_t).
+- Query and allocate workspace buffers as required by the API (both device and host workspace).
+
+For double precision, use CUDA_R_64F as the cudaDataType. The leading dimensions should match the matrix dimensions (m for column-major matrices with m rows).
+
+Helper macros `CUDA_CHECK` and `CUSOLVER_CHECK` are provided in `include/cuda_utils.h` for error checking.
+
+Function signature:
+```cpp
+void compute_svd(int64_t m, int64_t n, int64_t rank, int64_t p, int64_t iters,
+                 std::vector<double>& A, std::vector<double>& S,
+                 std::vector<double>& U, std::vector<double>& V);
+```
+
+Note: The input matrix A is in column-major format with leading dimension m.

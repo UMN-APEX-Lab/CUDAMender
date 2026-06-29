@@ -1,0 +1,59 @@
+# v2 — qwen36_27b few-shot CURATED K=5 (Exp 7 third strategy)
+# ============================================================
+# Examples are HAND-PICKED per task in evaluation/few_shot_curated.json
+# (subagent-generated, semantic match by task family + error category +
+#  algorithmic similarity).
+# Pool source dirs same as random/matched configs; pairs not in pool
+# (filtered by single-step-recovery + ≤100-line rule) are skipped with warning.
+#
+# Output: outputs_few_shot/qwen36_27b/curated_K5/<timestamp>/
+
+api:
+  backend: vllm
+  model: Qwen/Qwen3.6-27B
+  base_url: http://localhost:8005/v1
+  temperature: 0.7
+  top_p: 0.9
+  max_tokens: 16384
+  timeout: 300
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: false
+experiment:
+  name: qwen36_27b_fewshot_curated_K5_memcrash
+  method: iterative
+  few_shot_strategy: curated
+  few_shot_k: 5
+  few_shot_pair_pool_seed: 42
+  few_shot_pool_committee_dirs:
+  - evaluation/outputs/gemma4/20260424_123214
+  - evaluation/outputs/glm_4_7/20260424_151941
+  max_iterations: 5
+  max_history_rounds: 4
+  dataset_dir: "data"
+  output_dir: "outputs/fewshot/qwen36_27b_fewshot_curated_K5_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+  few_shot_curated_file: evaluation/few_shot_curated.json
+build:
+  workdir: /tmp/cuda_debugger_v3_qwen36_27b_fewshot_matched_K3
+  timeout: 300
+  test_timeout: 300
+logging:
+  level: INFO
+  save_api_responses: true

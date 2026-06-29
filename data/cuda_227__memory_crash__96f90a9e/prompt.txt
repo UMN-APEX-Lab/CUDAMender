@@ -1,0 +1,22 @@
+Write a CUDA kernel to sort segments of an array independently by utilizing intra-warp thread communication. For simplicity, assume only equally sized segments of up to 128 elements are used. Ensure that an arbitrary number of threads per block functions correctly.
+
+The kernel signature is defined in `include/k_sortSegments.h`:
+
+```cpp
+__global__ void k_sortSegments(float *array_d, float *arrayOut_d, int segmentSize, int arraySize);
+```
+
+Where:
+- `array_d` is a pointer to the array containing multiple segments to be sorted
+- `arrayOut_d` is a pointer to the array with sorted segments
+- `segmentSize` represents the number of elements in each segment
+- `arraySize` indicates the total number of elements in the array
+
+Example behavior:
+```
+k_sortSegments({ 10.2f, -11.0f, -25.3f, 35.0f, -448.0f, -5.0f, -68.0f, -57.0f, -128.0f, -99955.0f, -20.0f, -211.0f, -312.0f, -0.1f, -14.5f }, arrayOut_d, 5, 15)
+→ arrayOut_d: { -448.0f, -25.3f, -11.0f, 10.2f, 35.0f, -99955.0f, -128.0f, -68.0f, -57.0f, -5.0f, -312.0f, -211.0f, -20.0f, -14.5f, -0.1f }
+
+k_sortSegments({ 1230.0f, -123.0f, -200.0f, -300.0f, -4.1f, -5.2f, -6.7f, 7.8f, 8.1f, -19.0f, -190.0f, -1199.0f, -412.0f, -153.0f, -174.0f, -715.0f, -176.0f, -177.0f, -718.0f, -179.0f, -207.0f, -821.0f, -282.0f, -238.0f, -924.0f, -325.0f, -236.0f, -273.0f, -248.0f, -249.0f, -304.0f, -531.0f, -325.0f, -353.0f, -3400.0f, -3005.0f, -306.0f, -370.0f, -398.0f, -399.0f }, arrayOut_d, 10, 40)
+→ arrayOut_d: { -300.0f, -200.0f, -123.0f, -19.0f, -6.7f, -5.2f, -4.1f, 7.8f, 8.1f, 1230.0f, -1199.0f, -718.0f, -715.0f, -412.0f, -190.0f, -179.0f, -177.0f, -176.0f, -174.0f, -153.0f, -924.0f, -821.0f, -325.0f, -282.0f, -273.0f, -249.0f, -248.0f, -238.0f, -236.0f, -207.0f, -3400.0f, -3005.0f, -531.0f, -399.0f, -398.0f, -370.0f, -353.0f, -325.0f, -306.0f, -304.0f }
+```

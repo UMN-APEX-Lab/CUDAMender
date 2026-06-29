@@ -1,0 +1,25 @@
+Write a function `void solve_matrix(...)` that uses the cuSOLVER library's
+Iterative Refinement Solver (IRS) API to solve a linear system of equations
+in double precision. The function should:
+
+- Accept the matrix dimensions `N` (number of rows/columns) and `nrhs` (number
+  of right-hand sides).
+- Accept host vectors `hA` (input matrix), `hB` (right-hand side), and `hX`
+  (solution matrix) passed as `const std::vector<double>&` and `std::vector<double>&`.
+- Store the solution in `hX`.
+- Accept host data and handle all device memory allocation, data transfers, and
+  cleanup internally.
+
+The cuSOLVER IRS API requires using specialized parameter and information objects
+distinct from the standard cuSOLVER API. You must:
+- Initialize and configure IRS-specific parameter objects with appropriate precision
+  settings for double precision computation and suitable refinement methods.
+- Create information objects to track solver execution details.
+- Ensure proper resource management including buffer allocation and cleanup of all
+  IRS-specific objects.
+
+Function signature (declared in `include/solve_matrix.h`):
+```cpp
+void solve_matrix(int N, int nrhs, const std::vector<double> &hA,
+                  const std::vector<double> &hB, std::vector<double> &hX);
+```

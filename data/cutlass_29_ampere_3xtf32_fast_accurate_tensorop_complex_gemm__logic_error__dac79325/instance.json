@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_29_ampere_3xtf32_fast_accurate_tensorop_complex_gemm__logic_error__dac79325",
+  "task_family": "cutlass",
+  "error_category": "logic_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 536,
+  "broken_start_hash": "dac79325501e7a70"
+}

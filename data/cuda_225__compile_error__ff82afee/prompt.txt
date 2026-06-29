@@ -1,0 +1,35 @@
+Write a function using CUDA streams and events to run multiple kernels concurrently for the Least-Squares Method. Utilize two streams and two events. In the first step, all required device-side zero-initializations should be performed on separate streams while also launching `k_computeAverageObservedValue` on the first stream and `k_computeAveragePredictedValue` on the second stream. In the second step, both streams should wait for each other using events, with asynchronous waiting to the host, before launching `k_summationOfProducts` on the first stream and `k_summationOfSquares` on the second stream. In the third step, only the first stream should wait for the other stream before launching `k_leastSquaresMethodResult`, all asynchronously to the host.
+
+Implement the function with the following signature (declared in `include/least_squares.h`):
+
+```cpp
+void run(int numElements, int maxInputSize,
+         cudaStream_t* stream, cudaEvent_t firstStreamStop, cudaEvent_t secondStreamStop,
+         int* observedValues_d, int* predictedValues_d,
+         int* interimBufferObservedVal_d, int* interimBufferPredictedVal_d,
+         float* averageObservedValue_d, float* averagePredictedValue_d,
+         float* summationOfProducts_d, float* summationOfSquares_d,
+         float* interimBufferSumOfProducts_d, float* interimBufferSumOfSquares_d,
+         float* outputSlope_d, float* outputIntercept_d);
+```
+
+**Parameters:**
+- `numElements`: number of elements in input arrays
+- `maxInputSize`: maximum number of elements for any input
+- `stream`: pointer to array of CUDA streams
+- `firstStreamStop`, `secondStreamStop`: CUDA events for synchronization
+- `observedValues_d`, `predictedValues_d`: input integer arrays
+- `interimBufferObservedVal_d`, `interimBufferPredictedVal_d`: temporary integer storage
+- `averageObservedValue_d`, `averagePredictedValue_d`: average values (floats)
+- `summationOfProducts_d`, `summationOfSquares_d`: summation results (floats)
+- `interimBufferSumOfProducts_d`, `interimBufferSumOfSquares_d`: temporary float storage
+- `outputSlope_d`, `outputIntercept_d`: output slope and intercept values
+
+The CUDA kernels are declared in `include/least_squares.h` and implemented in `src/least_squares_kernels.cu`.
+
+**Example:**
+```
+run(9, 64, stream, firstStreamStop, secondStreamStop,
+    {1,8,9,6,4,3,5,7,2}, {8,1,7,6,2,4,5,9,3}, ...)
+  → outputSlope_d: {0.07f}, outputIntercept_d: {4.67f}
+```

@@ -1,0 +1,11 @@
+Write a CUDA kernel to perform matrix multiplication using tensor cores by using mma ptx instruction of dimension m16n8k16 for Ampere Architecture.
+
+Configure it in row major by column major format, using uint8_t data type for input matrices A (row major) and B (column major), and s32 for accumulator matrix C (row major). All input matrices will have m16n8k16 compatible dimensions.
+
+Implement the kernel declared in `include/kernel.h`. You may use the device helper functions provided in `include/helpers.h`.
+
+Example behavior:
+```
+k_mmaTensorMatMulM16N8k16Int8({1, 2, 3, 4}, {2, 4}, outputMatrix_d, 2, 1, 2) -> outputMatrix_d: ({10, 23})
+k_mmaTensorMatMulM16N8k16Int8({3, 6, 17, 15}, {13, 15}, outputMatrix_d, 2, 1, 2) -> outputMatrix_d: ({294, 303})
+```

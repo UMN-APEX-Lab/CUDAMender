@@ -1,0 +1,16 @@
+Write a function `compute_eigenvalues_and_vectors` that demonstrates the usage of the cuSOLVER library to compute the eigenvalues and eigenvectors of a square matrix using `cusolverDnXgeev`.
+
+The function signature is defined in `include/compute_eigenvalues.h`:
+```cpp
+void compute_eigenvalues_and_vectors(int64_t n, const std::vector<double> &A,
+                                     std::vector<double> &W,
+                                     std::vector<double> &VR);
+```
+
+Requirements:
+- Accept a square matrix `A` of size `n x n` in column-major order
+- Store the eigenvalues in `W` (size `2*n`) with the real parts of all eigenvalues stored first (indices 0 to n-1), followed by the imaginary parts (indices n to 2n-1)
+- Store the right eigenvectors in `VR` (size `n x n`) in column-major order; do not compute left eigenvectors
+- Accept host data and handle all device memory allocation, data transfers, and cleanup internally
+
+Error-checking macros (`CUDA_CHECK`, `CUSOLVER_CHECK`, `CUBLAS_CHECK`) are available in `include/cusolver_helpers.h`.

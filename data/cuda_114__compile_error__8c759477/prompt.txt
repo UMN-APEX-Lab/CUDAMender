@@ -1,0 +1,25 @@
+Write a CUDA kernel to upscale a 2D grayscale image from specified input dimensions to target output dimensions using bilinear interpolation by leveraging shared memory to cache input data tiles that are reused across multiple threads within a block.
+
+The kernel signature is defined in `include/bilinear_interpolation.h`:
+```cpp
+__global__ void k_bilinearInterpolation(float *inputMat, int inputWidth, int inputHeight,
+                                         float *outputMat, int outputWidth, int outputHeight);
+```
+
+Where:
+- `inputMat` is the pointer to the input image array
+- `inputWidth` and `inputHeight` are dimensions (width & height) of the input image
+- `outputMat` is the pointer to the output array
+- `outputWidth` and `outputHeight` are dimensions (width & height) of interpolated output image array
+
+The kernel should use a block size defined by `BLOCK_SIZE` (16) and leverage shared memory to cache input tiles for efficient reuse across threads.
+
+Example:
+```
+Input: {{0.0, 0.1, 0.2, 0.3, 0.4},
+        {0.5, 0.6, 0.7, 0.8, 0.9},
+        {0.10, 0.11, 0.12, 0.13, 0.14},
+        {0.15, 0.16, 0.17, 0.18, 0.19},
+        {0.20, 0.21, 0.22, 0.23, 0.24}}, 5x5
+Output: 8x8 upscaled image using bilinear interpolation
+```

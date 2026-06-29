@@ -1,0 +1,20 @@
+
+### TASK SPECIFICATION
+
+Task Name:
+Matrix_Multiplication
+
+Task Description:
+Compute the matrix multiplication of two given matrices.
+
+Input:
+matA: float32, shape = (262144, 4096)
+matB: float32, shape = (4096, 2048)
+
+Output:
+matC_out: float32, shape = (262144, 2048)
+
+GPU:
+NVIDIA RTX PRO 6000 Blackwell Server Edition
+
+CUDA program:

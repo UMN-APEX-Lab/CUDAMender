@@ -1,0 +1,17 @@
+{
+  "id": "kernelbench_level1_45__memory_crash__c4c9fe23",
+  "task_family": "kernelbench",
+  "error_category": "memory_crash",
+  "difficulty": "medium",
+  "upstream_library": "KernelBench",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.py",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 134,
+  "broken_start_hash": "c4c9fe239f7b8fd0"
+}

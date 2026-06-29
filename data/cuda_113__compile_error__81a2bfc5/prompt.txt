@@ -1,0 +1,29 @@
+Write a CUDA kernel to simulate temperature distribution across a 2D plate where each boundary point has a fixed temperature, and the plate has a thickness of one element. The kernel should utilize device memory to reuse data and update inner temperatures based on the average of the top, bottom, left, and right temperatures in each iteration of the simulation.
+
+The kernel signature is defined in `include/temperature_distribution.h`:
+
+```cpp
+__global__ void k_temperatureDistribution(float *temperatureValues, int numPlateElementsX, int numPlateElementsY, int numIterations);
+```
+
+where:
+- `temperatureValues` is the array of current temperatures of the plate
+- `numPlateElementsX` is the number of elements along the x-axis of the plate
+- `numPlateElementsY` is the number of elements along the y-axis of the plate
+- `numIterations` is the number of iterations to simulate the temperature distribution
+
+The kernel should use cooperative groups to synchronize across all blocks and alternate between two device memory buffers (`plateCurrentTemperatures_d` and `alternateBuffer_d`) declared in the header.
+
+**Example 1:**
+```
+Input: temperatureValues = {320.0, 320.0, 320.0, 320.0, 320.0, 0.0, 0.0, 320.0, 320.0, 0.0, 0.0, 320.0, 320.0, 320.0, 320.0, 320.0}
+       numPlateElementsX = 4, numPlateElementsY = 4, numIterations = 3
+Output: temperatureValues = {320.0, 320.0, 320.00, 320.0, 320.0, 280.0, 280.0, 320.0, 320.0, 280.0, 280.0, 320.0, 320.0, 320.0, 320.0, 320.0}
+```
+
+**Example 2:**
+```
+Input: temperatureValues = {360.0, 366.667, 373.333, 380.0, 386.667, 460.0, 0.0, 0.0, 0.0, 393.333, 453.333, 0.0, 0.0, 0.0, 400.0, 446.667, 0.0, 0.0, 0.0, 406.667, 440.0, 433.333, 426.667, 420.0, 413.333}
+       numPlateElementsX = 5, numPlateElementsY = 5, numIterations = 2
+Output: temperatureValues = {360.000000, 366.666656, 373.333313, 379.999969, 386.666626, 459.999847, 258.333282, 193.333313, 241.666641, 393.333282, 453.333191, 219.999939, 103.333313, 199.999969, 399.999939, 446.666534, 274.999939, 213.333282, 258.333282, 406.666595, 439.999878, 433.333221, 426.666565, 419.999908, 413.333252}
+```

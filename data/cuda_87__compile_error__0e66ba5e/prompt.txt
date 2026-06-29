@@ -1,0 +1,13 @@
+Write a function with the signature defined in `include/negate_and_prefix_sum.h`:
+
+```cpp
+thrust::device_vector<int> negate_and_prefix_sum(const thrust::device_vector<int>& vec);
+```
+
+This function should negate all elements of the input vector and simultaneously compute the prefix sum of the negated values (excluding the first value) in one pass on the GPU. Return the resulting vector with the prefix sum after negating every element first. Use only one Thrust algorithm to achieve this.
+
+For example, given input `{1, -3, 2, -4, 5}`, the function should:
+1. Negate each element: `{-1, 3, -2, 4, -5}`
+2. Compute exclusive prefix sum: `{0, -1, 2, 0, 4}`
+
+The function should return the resulting vector.

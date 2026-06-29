@@ -1,0 +1,1 @@
+../kernelbench_level2_12__logic_error__7a2c88a1/prompt.txt

@@ -1,0 +1,22 @@
+{
+  "task_id": "cuda_3__memory_crash__60acd230",
+  "schema_version": 2,
+  "difficulty": "medium",
+  "level": "compute_eval_2026_1",
+  "tags": [
+    "compute-eval",
+    "cuda-runtime",
+    "memory-crash",
+    "strict-memory-access"
+  ],
+  "source": {
+    "benchmark": "ComputeEval",
+    "release": "2026-1",
+    "task_id": "CUDA/3",
+    "sample_index": 2,
+    "group": "cuda-runtime"
+  },
+  "build_command": "nvcc -I include -o test.out solution.cu src/kernel.cu test/*.cu",
+  "test_command": "python test/run_sanitizer.py ./test.out",
+  "solution_file": "solution.cu"
+}

@@ -1,0 +1,34 @@
+# Conda environment for the CUDABeaver code package.
+#
+# Usage:
+#   conda env create -f environment.yml
+#   conda activate cuda-debugger-bench
+#   bash scripts/post_conda_setup.sh   # registers vendored kernelbench via .pth
+#
+# pip-only alternative: see requirements.txt + setup_env.sh.
+name: cuda-debugger-bench
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # PyTorch + CUDA — pulled from the pytorch / nvidia channels for ABI alignment
+  # with the system nvcc. Adjust pytorch-cuda to match your toolkit (12.x, 13.x).
+  - pytorch::pytorch>=2.4
+  - pytorch::pytorch-cuda
+  # Build / config / data
+  - pyyaml
+  - pandas
+  - numpy
+  - requests
+  - python-dotenv
+  - pydantic
+  # Test runner
+  - pytest
+  # Croissant validator (optional; the verifier degrades gracefully if absent)
+  - pip:
+      - openai>=1.0
+      - httpx
+      - mlcroissant

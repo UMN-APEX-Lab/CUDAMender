@@ -1,0 +1,17 @@
+{
+  "id": "cublas_applications_154__compile_error__83af4bad",
+  "task_family": "cublas",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "NVIDIA CUDA toolkit (cuBLAS)",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.cu",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 80,
+  "broken_start_hash": "83af4bad45ea9ad1"
+}

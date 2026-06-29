@@ -1,0 +1,10 @@
+Write a CUDA function called `reduce` that performs a max-finding reduction to find the maximum
+value in an array using a parallel-sweep-reduction technique.
+
+Implement the function according to the signature provided in `include/reduce.h`.
+Use the `BLOCK_SIZE` constant appropriately in your function.
+
+The signature is:
+```cuda
+__global__ void reduce(float *gdata, float *out, size_t n)
+```

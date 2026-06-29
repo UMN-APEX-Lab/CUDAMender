@@ -1,0 +1,13 @@
+Implement a function called `launch` that launches a kernel function named `kernel` with the provided grid and block dimensions using triple chevrons and also allocates dynamic shared memory. The x,y,z grid sizes and block sizes will be provided as parameters to the `launch` function. Assume that the `kernel` function is already defined.
+
+The signature of the `kernel` function is
+```cuda
+__global__ void kernel(int *output, const int *input)
+```
+
+Implement your solution in `solution.cu` by including `kernel_launch.h` (contract) and `kernel_helpers.h` (for the kernel declaration).
+
+The function signature is
+```cuda
+void launch(int gridSizeX, int blockSizeX, int gridSizeY = 1, int blockSizeY = 1, int gridSizeZ = 1, int blockSizeZ = 1)
+```

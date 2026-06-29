@@ -1,0 +1,40 @@
+# v3 mem_crash supplemental — gemma4_history_h1_memcrash
+# Model: gemma4. 200 v2 tasks. Universal perf gate >=0.3x.
+api:
+  backend: vllm
+  model: google/gemma-4-31B-it
+  base_url: http://localhost:8006/v1
+  temperature: 0.7
+  max_tokens: 16384
+  timeout: 300
+experiment:
+  name: gemma4_history_h1_memcrash
+  method: iterative
+  max_iterations: 5
+  max_history_rounds: 1
+  dataset_dir: "data"
+  output_dir: "outputs/history/gemma4_history_h1_memcrash"
+  tasks:
+  - "cuda_123"
+  - "cuda_151"
+  - kernelbench_level1_26
+  - kernelbench_level1_36
+  - kernelbench_level1_37
+  - kernelbench_level1_45
+  - kernelbench_level1_48
+  - kernelbench_level1_59
+  - kernelbench_level1_60
+  - kernelbench_level1_71
+  - kernelbench_level1_81
+  - kernelbench_level1_86
+  - kernelbench_level1_92
+  - kernelbench_level2_12
+  - kernelbench_level2_3
+  - kernelbench_level2_33
+build:
+  workdir: /tmp/cuda_debugger_v3_gemma4_history_h1
+  timeout: 300
+  test_timeout: 300
+logging:
+  level: INFO
+  save_api_responses: true

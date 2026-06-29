@@ -1,0 +1,24 @@
+Write a CUDA kernel to compute the linear congruential generator (LCG) algorithm for 100 steps on elements of an integer array. Utilize coalesced, asynchronous memory accesses to hide memory latency to its maximum extent. For simplicity, zero-pad the array.
+
+Your implementation should be in `solution.cu` and must include `lcg_kernel.h`.
+
+The signature of the CUDA kernel is:
+```cpp
+__global__ void k_calculateLCG(uint32_t * __restrict__ data_d, int numElements);
+```
+
+Where:
+- `data_d` is a pointer to the array for in-place linear-congruential-generation on elements
+- `numElements` is the number of elements to compute
+
+The LCG parameters and other constants are defined in `include/lcg_kernel.h`.
+
+**Examples:**
+
+```
+k_calculateLCG({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, 10)
+→ data_d: { 1148175737, 4135983138, 2828823248, 1521663358, 214503468, 3202310869, 1895150979, 587991089, 3575798490, 2268638600 }
+
+k_calculateLCG({ 150, 149, 148, 147, 146, 145, 144, 143, 142 }, 9)
+→ data_d: { 2642687623, 3949847513, 962040112, 2269200002, 3576359892, 588552491, 1895712381, 3202872271, 215064870 }
+```
