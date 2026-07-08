@@ -9,7 +9,7 @@ The repository has two layers:
 ## Layout
 
 ```text
-CuDebugger/
+CUDAMender/
   README.md                 artifact instructions
   harness/                  experiment runner, agent loop, tools, compiler, scoring
   harness/cudeubgger/       blackboard / ReAct CUDAMender agent implementation
@@ -58,7 +58,7 @@ The dataset bundles CUTLASS, ThunderKittens headers, and KernelBench support fil
 From the artifact root:
 
 ```bash
-cd ~/CuDebugger
+cd ~/CUDAMender
 bash setup_env.sh
 source .venv/bin/activate
 bash scripts/prepare_benchmark.sh
