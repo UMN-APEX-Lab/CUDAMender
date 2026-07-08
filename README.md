@@ -1,6 +1,6 @@
-# CuDebugger Artifact
+# Artifact for CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair
 
-This artifact packages the code and the 169-task paper subset needed to reproduce the CuDebugger/CUDABeaver CUDA debugging experiments. 
+This artifact packages the code and the 169-task benchmark data needed to reproduce the experiments for "CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair".
 The repository has two layers:
 
 - Top-level artifact files: a runnable snapshot of the harness, configs, dataset, scripts, tests, and analysis code needed for reproduction.
@@ -12,7 +12,7 @@ The repository has two layers:
 CuDebugger/
   README.md                 artifact instructions
   harness/                  experiment runner, agent loop, tools, compiler, scoring
-  harness/cudeubgger/       blackboard / ReAct CuDebugger agent implementation
+  harness/cudeubgger/       blackboard / ReAct CUDAMender agent implementation
   configs/                  agent, iterative, repeated, feedback, history, few-shot configs
   data/                     169 paper-task instances, references, prompts, testbenches, bundled headers
   benchmark/task_list.json  legacy task-list used by --mode debug
@@ -25,9 +25,9 @@ CuDebugger/
 No `logs/`, `outputs/`, or `results_*` directories are included in the artifact copy. Re-running experiments will create fresh result directories according to each config's `experiment.output_dir`.
 
 
-## Task Subset
+## Tasks
 
-The top-level `data/` directory is intentionally limited to the 169 tasks used in the paper experiments: 92 `compile_error`, 45 `logic_error`, and 32 `memory_crash` instances. 
+The top-level `data/` directory contains the 169 tasks used in the paper experiments: 92 `compile_error`, 45 `logic_error`, and 32 `memory_crash` instances.
 
 ## Submodule
 
