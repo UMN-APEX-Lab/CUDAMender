@@ -1,63 +1,28 @@
 # CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair
 
-This artifact packages the code and data needed to reproduce the experiments for "CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair".
-The repository has two layers:
-
-- Top-level artifact files: a runnable snapshot of the harness, configs, dataset, scripts, tests, and analysis code needed for reproduction.
-- `CUDABeaver/`: a git submodule pointing at the full upstream CUDABeaver benchmark repository for provenance and complete source history.
-
-## Layout
-
-```text
-CUDAMender/
-  README.md                 artifact instructions
-  harness/                  experiment runner, agent loop, tools, compiler, scoring
-  harness/cudeubgger/       blackboard / ReAct CUDAMender agent implementation
-  configs/                  agent, iterative, repeated, feedback, history, few-shot configs
-  data/                     151 paper-task instances, references, prompts, testbenches, bundled headers
-  benchmark/task_list.json  legacy task-list used by --mode debug
-  scripts/                  setup and dataset materialization helpers
-  analysis/                 aggregation/report scripts
-  tests/                    smoke/unit tests that do not require an LLM key
-  CUDABeaver/               full CUDABeaver repo as a git submodule
-```
-
-No `logs/`, `outputs/`, or `results_*` directories are included in the artifact copy. Re-running experiments will create fresh result directories according to each config's `experiment.output_dir`.
-
-## Submodule
-
-After cloning this artifact, initialize the full CUDABeaver submodule:
-
-```bash
-git submodule update --init --recursive
-```
+Official implementation of **CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair**. CUDAMender uses an LLM agent to repair CUDA compilation errors, logic errors, and memory errors with correctness and performance feedback.
 
 ## Requirements
 
-Hardware/software assumptions:
+- Linux with an NVIDIA GPU and a compatible NVIDIA driver.
+- CUDA Toolkit with `nvcc` on `PATH`, a C++ compiler, and `make`.
+- Python 3.10+ and CUDA-enabled PyTorch compatible with the installed CUDA Toolkit.
+- An OpenAI-compatible LLM endpoint, either a cloud API or a local vLLM/SGLang service.
+- NVIDIA Compute Sanitizer (`compute-sanitizer`) is recommended for memory-error diagnosis.
 
-- Linux machine with an NVIDIA GPU.
-- CUDA toolkit with `nvcc` available on `PATH`.
-- Python 3.10+.
-- PyTorch with CUDA support.
-- Optional but recommended for memory-crash analysis: NVIDIA Compute Sanitizer (`compute-sanitizer`).
-- For local model serving: an OpenAI-compatible vLLM/SGLang endpoint.
-- For cloud models: an OpenAI-compatible API key and endpoint.
-
-The dataset bundles CUTLASS, ThunderKittens headers, and KernelBench support files used by the harness.
-
-## Environment Setup
-
-From the artifact root:
+## Installation
 
 ```bash
-cd ~/CUDAMender
+git clone https://github.com/UMN-APEX-Lab/CUDAMender.git
+cd CUDAMender
 bash setup_env.sh
 source .venv/bin/activate
 bash scripts/prepare_benchmark.sh
 ```
 
-Alternative conda path:
+The setup script installs the Python dependencies. The benchmark data and required library headers are included in this repository.
+
+Alternatively, use Conda:
 
 ```bash
 conda env create -f environment.yml
@@ -66,125 +31,48 @@ bash scripts/post_conda_setup.sh
 bash scripts/prepare_benchmark.sh
 ```
 
-`prepare_benchmark.sh` materializes the flat dataset layout used by the harness. It is idempotent and can be rerun.
+## Configuration
 
-Generated reference caches are intentionally not shipped. Performance-gated runs create `data/evaluation/references_cache/<gpu_signature>/` lazily on the GPU/CUDA stack when a reference baseline is first needed. Applied-kernels runs may also create `harness/.cache/ref_builds/` while compiling CUDA references; that directory is generated scratch state.
-
-## Sanity Checks
-
-Run tests that do not need an LLM endpoint:
+Copy an agent configuration as a starting point:
 
 ```bash
-pytest tests/test_smoke.py -q
-pytest tests/test_agent_tools.py tests/test_task_registry.py -q
+cp configs/agent/logic_variant_agent_gpt5_4_low_pgate095_temp08_gpu2.yaml \
+  configs/agent/cudamender.yaml
 ```
 
-If CUDA or PyTorch is not configured correctly, GPU-dependent tests may fail before any LLM calls are made.
-
-## Configuring LLM Endpoints
-
-Experiment configs use an `api:` block. Before running, edit the selected config or create a copy and change:
+Edit the following fields in `configs/agent/cudamender.yaml` to match your model service and output directory, keeping the remaining settings:
 
 ```yaml
 api:
-  backend: openai        # or vllm
-  model: <model-name>
-  base_url: <https-or-local-openai-compatible-endpoint>/v1
-  api_key_env: <ENV_VAR_NAME>
-```
+  backend: openai
+  model: your-model-name
+  base_url: https://your-api-endpoint/v1
+  api_key_env: OPENAI_API_KEY
 
-Then export the key. For local vLLM/SGLang, any non-empty placeholder is usually enough:
-
-```bash
-export OPENAI_API_KEY=<your-api-key>
-# or for local vLLM:
-export LOCAL_VLLM_KEY=dummy
-```
-
-Configs use either localhost defaults or placeholder OpenAI-compatible endpoints. Replace them with your endpoint before use.
-
-## Running a Single Experiment
-
-General form:
-
-```bash
-python -m harness.run_experiment \
-  --config configs/agent/<config>.yaml \
-  --v2-task-list benchmark/task_list.json \
-  --mode debug
-```
-
-Examples:
-
-```bash
-# GPT-style blackboard agent on logic-error variants
-python -m harness.run_experiment \
-  --config configs/agent/logic_variant_agent_gpt5_4_low_pgate095_temp08_gpu2.yaml \
-  --v2-task-list benchmark/task_list.json \
-  --mode debug
-
-# Qwen memory-crash guided repair
-python -m harness.run_experiment \
-  --config configs/agent/memcrash_basic_agent_qwen36_27b_converge_30007_no_maxtok_gpu7.yaml \
-  --v2-task-list benchmark/task_list.json \
-  --mode debug
-
-# Iterative baseline
-python -m harness.run_experiment \
-  --config configs/iter/gpt5_4_iterative_memcrash32_low.yaml \
-  --v2-task-list benchmark/task_list.json \
-  --mode debug
-```
-
-The agent workflow is implemented mainly in:
-
-- `harness/agent_loop.py`
-- `harness/agent_tools.py`
-- `harness/cudeubgger/blackboard.py`
-- `harness/cudeubgger/runtime.py`
-- `harness/cudeubgger/submission.py`
-- `harness/diagnostics.py`
-
-## Reproducing the Main Agent Comparisons
-
-The configs used for the agent behavior analysis are included under `configs/agent/`, `configs/iter/`, and `configs/repeated/`. The important knobs are:
-
-```yaml
 experiment:
-  method: agent          # agent / iterative / repeated
-  max_iterations: 5
-agent:
-  workflow: blackboard
-  max_patch_submissions: 5
-performance_gate:
-  enabled: true
-  min_speedup: 0.95      # or 0.7 / 1.0 depending on the run
+  error_category: null  # Run all benchmark tasks.
+  output_dir: results_cudamender
 ```
 
-Run each selected config with `harness.run_experiment`; the harness writes per-task manifests, raw build logs, error-code snapshots, summaries, and tool traces into the configured output directory.
-
-## Analyzing Results
-
-After experiments finish, aggregate results with:
+Set the API key in your shell:
 
 ```bash
-python -m analysis.build_master --results-root outputs/iter --out-dir analysis_out
-python -m analysis.pivot_tables --master analysis_out/master.csv --out-dir analysis_out
+export OPENAI_API_KEY="your-api-key"
 ```
 
-For the tool-use and submission-attempt report used during artifact preparation:
+For a local vLLM/SGLang service, set `api.backend` to `vllm`, use its endpoint (for example, `http://localhost:8000/v1`), and provide the served model name. An unauthenticated local service can use `OPENAI_API_KEY=EMPTY`.
+
+## Running CUDAMender
+
+Run the benchmark on GPU 0:
 
 ```bash
-python analysis/agent_behavior_report.py --output analysis_out/agent_behavior_analysis.md
+CUDA_VISIBLE_DEVICES=0 python -m harness.run_experiment \
+  --config configs/agent/cudamender.yaml \
+  --v2-task-list benchmark/task_list.json \
+  --mode debug
 ```
 
-That script expects the specific result directories named in the script. If you regenerate experiments into different output directories, update the run list at the top of `analysis/agent_behavior_report.py`.
+To run selected tasks, append `--tasks cublas_applications_154` to the command. Task identifiers are listed in [`benchmark/task_list.json`](benchmark/task_list.json).
 
-## Reproducibility Notes
-
-- This artifact excludes logs and prior result directories by design.
-- Generated caches such as `data/evaluation/references_cache/` and `harness/.cache/ref_builds/` are excluded and should be regenerated locally.
-- Configs may need endpoint and GPU-ID edits for your machine.
-- Performance-gated results can vary with GPU model, CUDA version, timing backend, and model serving stack.
-- `write_solution` submissions automatically trigger build/test feedback; explicit `build_only` and `test_only` tool calls are optional diagnostics.
-- Compute Sanitizer is used through the constrained `run_compute_sanitizer` tool, not arbitrary shell execution.
+Results, repaired programs, and execution logs are saved under `experiment.output_dir`, in a separate directory for each run.
