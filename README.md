@@ -1,6 +1,6 @@
-# Artifact for CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair
+# CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair
 
-This artifact packages the code and the 151-task benchmark data needed to reproduce the experiments for "CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair".
+This artifact packages the code and data needed to reproduce the experiments for "CUDAMender: Automated Agentic Performance-Aware CUDA Program Repair".
 The repository has two layers:
 
 - Top-level artifact files: a runnable snapshot of the harness, configs, dataset, scripts, tests, and analysis code needed for reproduction.
@@ -24,11 +24,6 @@ CUDAMender/
 
 No `logs/`, `outputs/`, or `results_*` directories are included in the artifact copy. Re-running experiments will create fresh result directories according to each config's `experiment.output_dir`.
 
-
-## Tasks
-
-The top-level `data/` directory contains the 151 tasks used in the paper experiments: 74 `compile_error`, 45 `logic_error`, and 32 `memory_crash` instances.
-
 ## Submodule
 
 After cloning this artifact, initialize the full CUDABeaver submodule:
@@ -36,8 +31,6 @@ After cloning this artifact, initialize the full CUDABeaver submodule:
 ```bash
 git submodule update --init --recursive
 ```
-
-The top-level artifact is sufficient for the commands below. The submodule is included so reviewers can inspect the full original repository state and compare against upstream.
 
 ## Requirements
 
@@ -75,7 +68,7 @@ bash scripts/prepare_benchmark.sh
 
 `prepare_benchmark.sh` materializes the flat dataset layout used by the harness. It is idempotent and can be rerun.
 
-Generated reference caches are intentionally not shipped. Performance-gated runs create `data/evaluation/references_cache/<gpu_signature>/` lazily on the reviewer's own GPU/CUDA stack when a reference baseline is first needed. Applied-kernels runs may also create `harness/.cache/ref_builds/` while compiling CUDA references; that directory is generated scratch state.
+Generated reference caches are intentionally not shipped. Performance-gated runs create `data/evaluation/references_cache/<gpu_signature>/` lazily on the GPU/CUDA stack when a reference baseline is first needed. Applied-kernels runs may also create `harness/.cache/ref_builds/` while compiling CUDA references; that directory is generated scratch state.
 
 ## Sanity Checks
 
