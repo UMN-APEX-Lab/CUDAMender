@@ -135,8 +135,9 @@ def test_verified_suspects_fall_back_when_no_verifier_lines():
 def test_scoped_views_config_gate():
     assert _scoped_views_enabled({"agent": {"blackboard": {"scoped_views": True}}})
     assert not _scoped_views_enabled({"agent": {"blackboard": {"scoped_views": False}}})
-    assert not _scoped_views_enabled({"agent": {"blackboard": {}}})
-    assert not _scoped_views_enabled({})
+    # On by default: role-specific views are part of the design.
+    assert _scoped_views_enabled({"agent": {"blackboard": {}}})
+    assert _scoped_views_enabled({})
 
 
 def test_token_accumulation_estimate_and_usage():
@@ -180,8 +181,8 @@ def test_structured_reports_config_gate():
         {"agent": {"blackboard": {"structured_reports": True}}})
     assert not _structured_reports_enabled(
         {"agent": {"blackboard": {"structured_reports": False}}})
-    assert not _structured_reports_enabled({"agent": {"blackboard": {}}})
-    assert not _structured_reports_enabled({})
+    assert _structured_reports_enabled({"agent": {"blackboard": {}}})
+    assert _structured_reports_enabled({})
 
 
 def test_normalize_structured_report_caps_and_shapes():

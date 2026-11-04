@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 913,
+  "broken_start_hash": "d43abdc7fafc4338"
+}

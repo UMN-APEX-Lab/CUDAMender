@@ -26,6 +26,7 @@ STRUCTURED REPORT CONTRACT:
 - `summary`: one sentence (<= 1 line) with your single most important conclusion.
 - `key_points`: up to 4 terse bullets of concrete evidence (line numbers, tool findings).
 - `ruled_out`: up to 4 hypotheses you considered and rejected, so later roles do not re-investigate them.
+- `execution_strategy`: one line recording the intended CUDA execution strategy the repair must preserve (launch geometry, block-level cooperation, shared memory, Tensor Core path, reduction structure — whichever are relevant).
 - Put these fields directly in `args` (no nested object). Always call final_report before your turns run out.
 - Do not restate the full suspected-line list here; those are already on the blackboard via locate_bug.
 """
@@ -33,13 +34,14 @@ STRUCTURED REPORT CONTRACT:
 PERFORMANCE_REPAIR_OVERVIEW_PROMPT = """\
 PERFORMANCE CONTEXT:
 - Treat a solution as successful only when it is functionally correct and performance-preserving.
-- Target speedup is at least 0.95x of the reference unless the build/test feedback states a stricter threshold.
+- Target speedup is at least <PERF_TARGET> of the reference.
 - Prefer fixes that preserve the original parallel algorithm, launch geometry, tiling, shared-memory use, vectorization, and library/extension structure when those are relevant.
 - Do not mask a bug with a serial implementation, CPU/PyTorch fallback, or a much slower algorithm.
 """
 
 PERFORMANCE_ANALYZER_PROMPT = """\
 PERFORMANCE CONTEXT FOR ANALYZER:
+- Record the intended CUDA execution strategy of the candidate in your report's `execution_strategy`: launch geometry, block-level cooperation, shared memory, Tensor Core paths, and reduction structure when relevant.
 - Identify performance-critical structures in the current candidate when they affect the likely fix: launch geometry, tiling, shared memory, vectorization, library/extension structure, and asymptotic algorithm.
 - If a suspected fix would probably trade correctness for a slow fallback, flag that risk in your report.
 - Do not propose or evaluate code rewrites; provide static evidence and performance-risk context for verifier/coder.
@@ -56,6 +58,7 @@ PERFORMANCE CONTEXT FOR VERIFIER:
 - Choose a `next_fix` that fixes the root cause while preserving performance-critical structure whenever possible.
 - If a correctness-only fix would likely slow the kernel below target speedup, reject that direction and give a performance-preserving alternative.
 - When the latest failure is `perf_below_threshold`, decide whether the strategy is inherently too slow or just mis-implemented, and reflect that in `next_fix`.
+- Put the execution strategy the fix must preserve in `performance_constraints`; treat recorded performance-gate feedback (how a failed patch changed the parallel behavior) as a constraint.
 """
 
 PERFORMANCE_ROUTER_PROMPT = """\
@@ -67,7 +70,8 @@ PERFORMANCE CONTEXT FOR ROUTER:
 
 PERFORMANCE_CODER_PROMPT = """\
 PERFORMANCE CONTEXT FOR CODER:
-- Submit a complete file that is both correct and performance-preserving; target speedup is at least 0.95x unless feedback states a stricter threshold.
+- Submit a complete file that is both correct and performance-preserving; target speedup is at least <PERF_TARGET> of the reference.
+- Honor the `performance_constraints` recorded on the blackboard and state in `patch_intent` which execution strategy your patch keeps.
 - Preserve the original parallel algorithm, launch geometry, tiling, shared-memory use, vectorization, and library/extension structure whenever relevant.
 - Do not submit a serial rewrite, CPU/PyTorch fallback, excessive bounds-check-only patch, unnecessary synchronization, or much slower correctness-only implementation.
 - If performance feedback is available, use the candidate/reference runtime and speedup to guide the next full-file submission.
@@ -270,7 +274,8 @@ exactly ONE concrete fix. Return ONLY JSON:
       "evidence": ["static/runtime evidence"]
     }
   ],
-  "next_fix": "exactly ONE specific, concrete fix direction for the coder to apply now"
+  "next_fix": "exactly ONE specific, concrete fix direction for the coder to apply now",
+  "performance_constraints": "the intended CUDA execution strategy the fix must preserve"
 }
 
 `next_fix` must be a single actionable change, not a list of options. Name the \
@@ -287,10 +292,12 @@ implementation instead of changing strategy.
 
 
 ROUTE_DECISION_SYSTEM_PROMPT = """\
-You are the routing controller in a CUDA debugging pipeline. A coder just \
-submitted a patch that FAILED. Using the attempted fix strategy, the \
-localization, the submitted candidate code, and the latest execution result, \
-decide the next step. Return ONLY JSON:
+You are the Router agent in a CUDA debugging pipeline. A coder just \
+submitted a patch that FAILED. Using the submitted patch intent, the \
+attempted fix strategy, the localization, the submitted candidate code, the \
+validation result, the attempt history, and any repeated-failure alert, \
+decide whether the failure reflects an implementation mistake in the patch or \
+an unsupported diagnosis. Return ONLY JSON:
 {
   "diagnosis": "coder_error | wrong_strategy",
   "next_action": "retry_fix | reanalyze",
@@ -308,7 +315,10 @@ fresh static/runtime evidence — UNLESS a clearly better direction is already \
 obvious from existing evidence, in which case "retry_fix" with a new direction \
 is acceptable.
 
-Never pick a direction already present in the Already-Tried list.
+Never pick a direction already present in the Already-Tried list. If a \
+Repeated Failure Alert is present, the current direction is cycling: choose \
+between refining it with a materially different implementation (retry_fix) \
+and restarting diagnosis (reanalyze); do not resubmit the same idea.
 """ + "\n" + PERFORMANCE_ROUTER_PROMPT + "\n" + OUTPUT_DISCIPLINE_PROMPT
 
 
@@ -317,9 +327,13 @@ You are the Coder agent in a CUDA debugging pipeline. You receive a verified \
 line-level bug report and must submit the smallest correct, performance-preserving \
 complete file.
 
-Use `locate_bug` to confirm the exact target line, then call \
-`write_solution(code=...)` with a complete revised solution file. The `code` \
-argument must be the whole file, not a diff, snippet, or only changed lines.
+The verified localization on the blackboard is your localization record: the \
+repair phase is already unlocked and your submission is tied to it. Apply the \
+verifier's `next_fix`: either stage structured edits with `apply_edit` and then \
+call `write_solution` to submit the edited candidate, or call \
+`write_solution(code=...)` with a complete revised solution file (the whole \
+file, not a diff or snippet). You may `read_code` or `build_only` to check the \
+patch before submitting. Always fill `patch_intent` in `write_solution`.
 
 If a previous submitted file failed, your new full-file submission must address \
 the new failure result or performance gate result recorded in the attempt \
@@ -330,3 +344,16 @@ on top of the same failed idea. Either revert the ineffective patch and repair \
 from the original logic, or replace the failed region with a materially \
 different minimal fix supported by the new evidence.
 """ + "\n" + PERFORMANCE_CODER_PROMPT + "\n" + OUTPUT_DISCIPLINE_PROMPT
+
+
+def performance_target_text(config: dict) -> str:
+    """The configured performance-gate threshold as prompt text."""
+    gate = ((config.get("agent", {}) or {}).get("performance_gate")) or {}
+    if not bool(gate.get("enabled", True)):
+        return "the reference runtime (no hard gate is configured)"
+    target = float(gate.get("min_speedup", gate.get("threshold_speedup", 0.3)))
+    return f"{target:.2f}x"
+
+
+def with_performance_target(prompt: str, config: dict) -> str:
+    return prompt.replace("<PERF_TARGET>", performance_target_text(config))

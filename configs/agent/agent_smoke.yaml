@@ -57,16 +57,14 @@ agent:
   blackboard:
     max_role_turns: 3
     max_coder_turns: 4
-    # Role-scoped board projections: each role receives only the slice it
-    # needs (coder gets just the verified bug report + fix suggestions +
-    # latest runtime result) instead of the full board dump. Cuts redundant
-    # token cost; false = legacy behavior (full board to every role).
-    scoped_views: false
+    # Role-scoped board projections V_R(B): each role receives only the
+    # slice it needs (Table 2 of the paper) instead of the full board dump.
+    # false = legacy behavior (full board to every role).
+    scoped_views: true
     # Structured role reports: analyzer/executor finish with a bounded
-    # {summary, key_points, ruled_out} object instead of free-text prose
-    # (JSON-action protocol only). Smaller, machine-consumable verifier input
-    # + anti-redundancy via ruled_out. false = legacy free-text report.
-    structured_reports: false
+    # {summary, key_points, ruled_out, execution_strategy} object instead of
+    # free-text prose (JSON-action protocol only). false = legacy free text.
+    structured_reports: true
     analyzer_tools:
       - read_code
       - read_test_file
@@ -98,8 +96,8 @@ agent:
   # truncated). Results under this pass through verbatim. 8000 ≈ a
   # ~250-line source file.
   tool_result_cap_chars: 8000
-  # LLM-backed context summarisation (L1/L2/L3). Set false to fall back
-  # to head+tail truncation + one-line digests.
+  # LLM-backed context summarisation (L1/L2/L3). Set false to use the
+  # deterministic type-aware summariser instead.
   use_llm_summary: true
   summary_target_chars: 4000      # prompt-requested summary length
   summary_max_tokens: 4096        # hard output cap on the summariser call

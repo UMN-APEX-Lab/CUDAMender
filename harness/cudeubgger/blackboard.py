@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 from ..agent_tools import ToolEnv, call_tool, schemas_for_config
@@ -14,10 +13,12 @@ from .common import (
     ErrorBlackboard,
     _LoopState,
     _RoleResult,
+    _FIX_PHASE_TOOLS,
     _accumulate_token_usage,
     _action_to_tool_call,
     _append_action_result_message,
     _attempt_history_prompt,
+    _build_ctx_config,
     _chars_per_token,
     _extract_json_action,
     _forced_action_context,
@@ -29,6 +30,7 @@ from .common import (
     _json_role_action_request,
     _max_coder_non_submission_rounds,
     _max_patch_submissions,
+    _maybe_make_summarizer,
     _normalize_structured_report,
     _patch_submission_limit_stop_reason,
     _record_coder_non_submission,
@@ -41,8 +43,14 @@ from .common import (
     _tried_strategies_prompt,
     _tool_decision_overrides,
     _tool_names,
-    _tools_for_phase,
     _truncate_text,
+)
+from .memory import (
+    anchors_block,
+    attempt_summary,
+    describe_strategy,
+    kernel_signatures,
+    launch_expressions,
 )
 from .prompts import (
     ANALYZER_SYSTEM_PROMPT,
@@ -51,6 +59,7 @@ from .prompts import (
     ROUTE_DECISION_SYSTEM_PROMPT,
     STRUCTURED_REPORT_PROMPT,
     VERIFIER_SYSTEM_PROMPT,
+    with_performance_target,
 )
 from .runtime import (
     _append_assistant_message,
@@ -59,6 +68,7 @@ from .runtime import (
     _call_json_action_or_record_api_error,
     _call_llm_or_record_api_error,
     _dispatch_tool_calls,
+    _pre_turn_context_mgmt,
     _seed_broken_start,
     _write_tool_trace,
 )
@@ -66,37 +76,6 @@ from ..task_registry import load_input_meta, load_prompt_text
 
 logger = logging.getLogger("cuda_debugger_exp")
 
-
-@dataclass
-class _NoBlackboardReports:
-    """Compact handoff object for the multi-role no-blackboard ablation."""
-
-    task_stem: str
-    initial_observation: dict | None = None
-    error_type: str | None = None
-    analyzer_report: str | dict | None = None
-    executor_report: str | dict | None = None
-    verifier_report: str | None = None
-    verifier_payload: dict | None = None
-    next_fix: str | None = None
-
-    def to_dict(self) -> dict:
-        return {
-            "task_stem": self.task_stem,
-            "initial_observation": self.initial_observation,
-            "error_type": self.error_type,
-            "analyzer_report": self.analyzer_report,
-            "executor_report": self.executor_report,
-            "verifier_report": self.verifier_report,
-            "verifier_payload": self.verifier_payload,
-            "next_fix": self.next_fix,
-        }
-
-    def to_prompt_block(self, max_chars: int = 14000) -> str:
-        return _truncate_text(
-            json.dumps(self.to_dict(), indent=2, ensure_ascii=False),
-            max_chars,
-        )
 
 def _update_blackboard_from_tool(
     board: ErrorBlackboard,
@@ -217,10 +196,14 @@ def _run_tool_role_agent(
     max_turns: int,
     max_tool_calls: int,
     asst_content_cap: int,
+    ctx_cfg=None,
+    summarizer=None,
 ) -> _RoleResult:
     structured = _structured_reports_enabled(config)
     if structured:
         system_prompt = system_prompt + "\n" + STRUCTURED_REPORT_PROMPT
+    system_prompt = with_performance_target(system_prompt, config)
+    ctx_cfg = ctx_cfg or _build_ctx_config(config.get("agent", {}) or {})
     messages: list[dict] = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
@@ -245,6 +228,11 @@ def _run_tool_role_agent(
     )
 
     for turn in range(max_turns):
+        # Keep the local window verbatim, fold older tool groups into typed
+        # summaries, and attach the budget nudge before every turn.
+        _pre_turn_context_mgmt(
+            messages, ctx_cfg, summarizer, system_prompt, role=role_name,
+        )
         if use_json_action:
             action_request = _json_role_action_request(
                 tools,
@@ -527,6 +515,39 @@ def _extract_json_payload(text: str) -> dict | None:
     return obj if isinstance(obj, dict) else None
 
 
+def _candidate_meta(code: str, input_meta: dict) -> dict:
+    """Candidate source metadata for the Analyzer view."""
+    return {
+        "solution_file": input_meta.get("solution_file", "solution.cu"),
+        "lines": len((code or "").splitlines()),
+        "kernel_signatures": kernel_signatures(code),
+        "launch_expressions": launch_expressions(code),
+        "execution_strategy": describe_strategy(code),
+    }
+
+
+def _role_context(
+    board: ErrorBlackboard,
+    role: str,
+    config: dict,
+    code: str,
+    attempt_history: str,
+) -> str:
+    """V_R(B) ∪ A_R(B) ∪ S_T: the blackboard-derived part of a role prompt.
+
+    The role transcript adds the in-iteration summaries and the local window
+    (S_I and L_K), maintained by the context manager before every turn.
+    """
+    return (
+        f"## Blackboard View ({role})\n"
+        f"{_board_block(board, role, config)}\n\n"
+        "## CUDA Evidence Anchors\n"
+        f"{anchors_block(board, role, code)}\n\n"
+        "## Previous Failed Attempts\n"
+        f"{attempt_history}\n\n"
+    )
+
+
 def _parse_verifier_payload(report: str) -> tuple[dict | None, str | None, str | None]:
     """Parse verifier JSON and normalize the single next-fix direction."""
     parsed = _extract_json_payload(report)
@@ -571,7 +592,7 @@ def _run_blackboard_verifier(
             f"{json.dumps(route_diagnosis, indent=2, ensure_ascii=False)}\n\n"
         )
     messages = [
-        {"role": "system", "content": VERIFIER_SYSTEM_PROMPT},
+        {"role": "system", "content": with_performance_target(VERIFIER_SYSTEM_PROMPT, config)},
         {
             "role": "user",
             "content": (
@@ -581,13 +602,10 @@ def _run_blackboard_verifier(
                 "```cuda\n"
                 f"{_truncate_text(current_code, 8000)}\n"
                 "```\n\n"
-                "## Previous Failed Attempts\n"
-                f"{attempt_history}\n\n"
+                f"{_role_context(board, 'verifier', config, current_code, attempt_history)}"
                 f"{tried_section}"
                 f"{route_section}"
                 f"{repeat_section}"
-                "## Shared Error Blackboard\n"
-                f"{_board_block(board, 'verifier', config)}\n"
             ),
         },
     ]
@@ -615,6 +633,7 @@ def _run_blackboard_verifier(
     board.verifier_report = _sanitize_assistant_content(raw, max_chars=12000) or ""
     parsed, error_type, next_fix = _parse_verifier_payload(board.verifier_report)
     if parsed:
+        board.verifier_payload = parsed
         if error_type:
             board.error_type = error_type
         reports = parsed.get("line_level_bug_report") or parsed.get("bug_report") or []
@@ -637,87 +656,17 @@ def _run_blackboard_verifier(
         # Keep fix_suggestions populated (as the single direction) for any
         # consumer that still reads it.
         board.fix_suggestions = [board.next_fix] if board.next_fix else []
+        # The execution strategy the fix must preserve becomes a repair
+        # constraint for the coder.
+        if parsed.get("performance_constraints"):
+            board.execution_strategy = _truncate_text(
+                str(parsed["performance_constraints"]), 400
+            )
         # Stash the direction so the submission recorder can log it into the
         # tried-strategy registry (gap 6).
         state.current_fix_direction = board.next_fix
 
     return _RoleResult(report=board.verifier_report)
-
-
-def _run_no_blackboard_verifier(
-    client,
-    config: dict,
-    state: _LoopState,
-    reports: _NoBlackboardReports,
-    prompt_text: str,
-    current_code: str,
-    attempt_history: str = "[]",
-    repeated_failure_alert: str | None = None,
-    tried_strategies: str | None = None,
-    route_diagnosis: dict | None = None,
-) -> _RoleResult:
-    repeat_section = (
-        f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
-        if repeated_failure_alert
-        else ""
-    )
-    tried_section = f"## {tried_strategies}\n\n" if tried_strategies else ""
-    route_section = ""
-    if route_diagnosis:
-        route_section = (
-            "## Routing Diagnosis (from the last failed attempt)\n"
-            f"{json.dumps(route_diagnosis, indent=2, ensure_ascii=False)}\n\n"
-        )
-    messages = [
-        {"role": "system", "content": VERIFIER_SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                "No shared error blackboard is available in this ablation. "
-                "Use only the role reports below, previous attempts, and the "
-                "current code to produce the required JSON verifier output.\n\n"
-                "## Task Prompt\n"
-                f"{_truncate_text(prompt_text, 4000)}\n\n"
-                "## Current Candidate\n"
-                "```cuda\n"
-                f"{_truncate_text(current_code, 8000)}\n"
-                "```\n\n"
-                "## Previous Failed Attempts\n"
-                f"{attempt_history}\n\n"
-                f"{tried_section}"
-                f"{route_section}"
-                f"{repeat_section}"
-                "## Role Reports\n"
-                f"{reports.to_prompt_block()}\n"
-            ),
-        },
-    ]
-    tool_decision_max_tokens, tool_decision_temperature = _tool_decision_overrides(
-        config.get("agent", {}) or {}
-    )
-    try:
-        raw = deps.call_llm(
-            client,
-            config,
-            messages,
-            max_tokens=tool_decision_max_tokens,
-            temperature=tool_decision_temperature,
-        )
-    except Exception as e:
-        logger.error(f"  [no-blackboard verifier] API error: {e}")
-        return _RoleResult(stop_reason="api_error")
-
-    _accumulate_token_usage(
-        state, "verifier", messages, None, _chars_per_token(config)
-    )
-    reports.verifier_report = _sanitize_assistant_content(raw, max_chars=12000) or ""
-    parsed, error_type, next_fix = _parse_verifier_payload(reports.verifier_report)
-    reports.verifier_payload = parsed
-    if error_type:
-        reports.error_type = error_type
-    reports.next_fix = next_fix
-    state.current_fix_direction = next_fix
-    return _RoleResult(report=reports.verifier_report)
 
 
 def _run_route_decision(
@@ -729,29 +678,49 @@ def _run_route_decision(
     next_fix: str | None,
     latest_attempt: dict | None,
     tried_strategies: str | None,
+    board: ErrorBlackboard | None = None,
+    repeated_failure_alert: str | None = None,
 ) -> dict:
-    """After a failed submission, decide whether to retry the fix or re-analyze.
+    """Router: after a failed submission, retry the fix or re-analyze.
 
-    The prompt includes the submitted code, the localization, and the attempted
-    fix strategy so the verifier can tell a wrong *strategy* from a coder that
-    simply mis-implemented a sound one (gap 5b). Returns
-    ``{next_action, diagnosis, reason}``; defaults to ``reanalyze`` when the
-    response cannot be parsed (the safe, evidence-gathering choice).
+    The prompt includes the submitted patch intent, the localization, the
+    attempted fix strategy, the submitted code, the validation result, the
+    attempt history, and any repeated-failure alert, so the router can tell
+    a wrong *strategy* from a coder that simply mis-implemented a sound one
+    (gap 5b). Returns ``{next_action, diagnosis, reason}``; defaults to
+    ``reanalyze`` when the response cannot be parsed (the safe,
+    evidence-gathering choice).
     """
-    cls = (latest_attempt or {}).get("classification") or {}
+    latest = latest_attempt or {}
+    cls = latest.get("classification") or {}
     result_summary = {
         "category": cls.get("category"),
         "five_category": cls.get("five_category"),
         "build_ok": cls.get("build_ok"),
-        "build_output_excerpt": (latest_attempt or {}).get("build_output_excerpt"),
-        "test_output_excerpt": (latest_attempt or {}).get("test_output_excerpt"),
+        "build_output_excerpt": latest.get("build_output_excerpt"),
+        "test_output_excerpt": latest.get("test_output_excerpt"),
+        "performance_gate": latest.get("performance_gate"),
     }
+    attempt_history = _attempt_history_prompt(state)
+    if board is not None:
+        history_section = _role_context(
+            board, "router", config, candidate_code, attempt_history
+        )
+    else:
+        history_section = f"## Previous Failed Attempts\n{attempt_history}\n\n"
+    repeat_section = (
+        f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
+        if repeated_failure_alert
+        else ""
+    )
     messages = [
-        {"role": "system", "content": ROUTE_DECISION_SYSTEM_PROMPT},
+        {"role": "system", "content": with_performance_target(ROUTE_DECISION_SYSTEM_PROMPT, config)},
         {
             "role": "user",
             "content": (
                 "A patch was just submitted and FAILED. Decide the next step.\n\n"
+                "## Submitted patch intent\n"
+                f"{latest.get('patch_intent') or latest.get('rationale') or '(none recorded)'}\n\n"
                 "## Attempted fix strategy (verifier's direction)\n"
                 f"{next_fix or '(none recorded)'}\n\n"
                 "## Localization used\n"
@@ -760,8 +729,10 @@ def _run_route_decision(
                 "```cuda\n"
                 f"{_truncate_text(candidate_code, 8000)}\n"
                 "```\n\n"
-                "## Latest execution result\n"
-                f"{json.dumps(result_summary, indent=2, ensure_ascii=False)}\n\n"
+                "## Validation result\n"
+                f"{json.dumps(result_summary, indent=2, ensure_ascii=False, default=str)}\n\n"
+                f"{history_section}"
+                f"{repeat_section}"
                 f"## {tried_strategies or 'ALREADY TRIED: (none)'}\n"
             ),
         },
@@ -805,14 +776,37 @@ def _attach_blackboard_to_latest_record(
     state.records[-1]["error_blackboard"] = board.to_dict()
 
 
-def _attach_no_blackboard_to_latest_record(
-    state: _LoopState,
-    reports: _NoBlackboardReports,
-) -> None:
-    if not state.records:
-        return
-    state.records[-1]["agent_workflow"] = "multi_role_no_blackboard"
-    state.records[-1]["role_reports"] = reports.to_dict()
+def _verified_localization(board: ErrorBlackboard) -> dict | None:
+    """The localization record a Coder submission is tied to.
+
+    Prefers the Verifier's line-level bug report; falls back to the
+    Analyzer/Executor ``locate_bug`` records on the board. Returns None when
+    the board holds no usable line, in which case the Coder must localize
+    itself before the repair phase unlocks.
+    """
+    verified = [s for s in board.suspected_lines if s.get("source") == "verifier"]
+    located = [
+        s for s in board.suspected_lines if s.get("source") in ("analyzer", "executor")
+    ]
+    for item in verified or located:
+        if item.get("line") is None:
+            continue
+        evidence = item.get("evidence")
+        if isinstance(evidence, list):
+            evidence = "; ".join(str(e) for e in evidence)
+        return {
+            "file": item.get("file") or "solution.cu",
+            "line": item.get("line"),
+            "bug_description": item.get("root_cause") or item.get("bug_description") or "",
+            "evidence": evidence or "",
+            "source": item.get("source"),
+        }
+    return None
+
+
+def _record_board_attempt(state: _LoopState, board: ErrorBlackboard) -> None:
+    if state.attempt_history:
+        board.record_attempt(attempt_summary(state.attempt_history[-1]))
 
 
 def _run_blackboard_coder_once(
@@ -828,6 +822,8 @@ def _run_blackboard_coder_once(
     prompt_text: str,
     max_tool_calls: int,
     asst_content_cap: int,
+    ctx_cfg=None,
+    summarizer=None,
 ) -> str | None:
     agent_cfg = config.get("agent", {}) or {}
     bb_cfg = agent_cfg.get("blackboard") or {}
@@ -836,14 +832,15 @@ def _run_blackboard_coder_once(
         "read_code",
         "read_test_file",
         "read_prompt",
-        "locate_bug",
+        "build_only",
         "apply_edit",
         "write_solution",
-        "build_only",
     ]
+    # locate_bug is a diagnosis tool; the coder only falls back to it when
+    # the board holds no localization record.
+    fix_tools = [t for t in coder_tools if t != "locate_bug"]
     full_file_mode = _full_file_submissions(config)
-    if full_file_mode:
-        coder_tools = [t for t in coder_tools if t != "apply_edit"]
+    ctx_cfg = ctx_cfg or _build_ctx_config(agent_cfg)
     tool_decision_max_tokens, tool_decision_temperature = (
         _tool_decision_overrides(agent_cfg)
     )
@@ -858,105 +855,90 @@ def _run_blackboard_coder_once(
     state.located_this_iteration = False
     state.pending_location = None
     state.applied_edit_this_iteration = False
+    localization = _verified_localization(board)
+    if localization is not None:
+        # The repair phase starts from the verified localization record;
+        # write_solution submissions are tied to it.
+        state.located_this_iteration = True
+        state.pending_location = localization
     local_no_ops = 0
-    repeated_failure_alert = _repeated_failure_alert(state)
     repeat_section = (
-        f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
-        if repeated_failure_alert
+        f"## Repeated Failure Alert\n{board.repeated_failure_alert}\n\n"
+        if board.repeated_failure_alert
         else ""
     )
-    coder_instruction = (
-        "Submit a complete revised solution file based on this verified blackboard.\n\n"
-        if full_file_mode
-        else "Apply a minimal fix based on this verified blackboard.\n\n"
-    )
+    base_system = with_performance_target(CODER_SYSTEM_PROMPT, config)
     messages: list[dict] = [
-        {"role": "system", "content": CODER_SYSTEM_PROMPT},
+        {"role": "system", "content": base_system},
         {
             "role": "user",
             "content": (
-                coder_instruction
+                "Repair the candidate based on this verified blackboard.\n\n"
                 + "## Task Prompt\n"
                 + f"{_truncate_text(prompt_text, 4000)}\n\n"
                 + "## Current Candidate (full file)\n"
                 + "```cuda\n"
                 + f"{env.current_code}\n"
                 + "```\n\n"
-                + "## Previous Failed Attempts\n"
-                + f"{_attempt_history_prompt(state)}\n\n"
-                + f"{repeat_section}"
-                + "## Shared Error Blackboard\n"
-                + f"{_board_block(board, 'coder', config)}\n"
+                + "## Localization Record\n"
+                + (
+                    f"{json.dumps(localization, indent=2, ensure_ascii=False)}\n\n"
+                    if localization is not None
+                    else "(none on the blackboard — call `locate_bug` first)\n\n"
+                )
+                + _role_context(
+                    board, "coder", config, env.current_code,
+                    _attempt_history_prompt(state),
+                )
+                + repeat_section
             ),
         },
     ]
 
-    for _ in range(max_turns):
+    for turn in range(max_turns):
+        last_turn = turn == max_turns - 1
         in_locate_phase = (
             bool(env.current_code.strip()) and not state.located_this_iteration
         )
-        must_edit_phase = (
-            bool(env.current_code.strip())
-            and state.located_this_iteration
-            and not state.applied_edit_this_iteration
-            and not state.force_read_code_reason
-        )
+        staged = state.applied_edit_this_iteration
         if state.force_read_code_reason:
-            tools = schemas_for_config([
-                t for t in ("read_code", "write_solution") if t in coder_tools
-            ], require_full_solution_code=full_file_mode)
+            names = [t for t in ("read_code", "write_solution") if t in coder_tools]
             action_context = _forced_action_context(state)
-        elif in_locate_phase and force_locate_first:
-            tools = schemas_for_config(
-                ["locate_bug"] if "locate_bug" in coder_tools else [],
-                require_full_solution_code=full_file_mode,
+        elif in_locate_phase:
+            names = (
+                ["locate_bug"]
+                if force_locate_first
+                else [t for t in fix_tools if t not in _FIX_PHASE_TOOLS] + ["locate_bug"]
             )
             action_context = _join_decision_constraints(
                 _forced_action_context(state),
-                "The analyzer, executor, and verifier have already produced the "
-                "blackboard evidence. Your next action must be `locate_bug` using "
-                "the verified line-level bug report; do not investigate further "
-                "in the coder role.",
+                "No verified localization is on the blackboard. Call "
+                "`locate_bug` with the exact file, line, bug, and evidence "
+                "before repairing.",
             )
-        elif must_edit_phase:
-            if full_file_mode:
-                tools = schemas_for_config(
-                    ["write_solution"] if "write_solution" in coder_tools else [],
-                    require_full_solution_code=True,
-                )
-                action_context = _join_decision_constraints(
-                    _forced_action_context(state),
-                    "You already located the bug. Your next action must be "
-                    "`write_solution` with a complete revised `code` file. "
-                    "Include the entire solution file, not a diff, snippet, "
-                    "or only the changed lines. Do not read or relocalize.",
-                )
-            else:
-                tools = schemas_for_config(
-                    [
-                        t for t in ("apply_edit",)
-                        if t in coder_tools
-                    ]
-                )
-                action_context = _join_decision_constraints(
-                    _forced_action_context(state),
-                    "You already located the bug. Your next action must be "
-                    "`apply_edit` with a minimal replacement or line-range edit. "
-                    "If exact matching is brittle or an `apply_edit` mismatch "
-                    "blocks progress, call `write_solution` with a complete "
-                    "revised `code` file so the candidate reaches build/test. Do "
-                    "not read or relocalize.",
-                )
+        elif last_turn:
+            names = [t for t in ("apply_edit", "write_solution") if t in fix_tools]
+            action_context = _join_decision_constraints(
+                _forced_action_context(state),
+                "This is your last coder turn. Submit now with `write_solution` "
+                + (
+                    "(the staged edits, or a complete revised `code` file)."
+                    if staged
+                    else "and a complete revised `code` file."
+                ),
+            )
         else:
-            tools = _tools_for_phase(
-                coder_tools,
-                in_locate_phase=in_locate_phase,
-                require_full_solution_code=full_file_mode,
-            )
+            names = fix_tools
             action_context = _forced_action_context(state)
+        tools = schemas_for_config(
+            names,
+            require_full_solution_code=full_file_mode and not staged,
+        )
         prev_iter = state.iteration
-        request_max_tokens = tool_decision_max_tokens
-        request_temperature = tool_decision_temperature
+        _pre_turn_context_mgmt(
+            messages, ctx_cfg, summarizer, base_system,
+            in_locate_phase=in_locate_phase, role="coder",
+        )
         if use_json_action:
             action_request = _json_action_request(
                 tools,
@@ -971,8 +953,8 @@ def _run_blackboard_coder_once(
                 state,
                 task_stem,
                 input_meta,
-                max_tokens=request_max_tokens,
-                temperature=request_temperature,
+                max_tokens=tool_decision_max_tokens,
+                temperature=tool_decision_temperature,
                 response_format=json_response_format,
                 role="coder",
             )
@@ -1007,8 +989,8 @@ def _run_blackboard_coder_once(
         else:
             resp = _call_llm_or_record_api_error(
                 client, config, messages, tools, state, task_stem, input_meta,
-                max_tokens=request_max_tokens,
-                temperature=request_temperature,
+                max_tokens=tool_decision_max_tokens,
+                temperature=tool_decision_temperature,
                 role="coder",
             )
             if resp is None:
@@ -1019,297 +1001,18 @@ def _run_blackboard_coder_once(
             local_no_ops += 1
             if local_no_ops >= 2:
                 return "coder_no_op"
-            if must_edit_phase:
-                content = (
-                    "You already called locate_bug. Continue with "
-                    "`write_solution(code=...)` using the complete revised "
-                    "solution file; do not read or relocalize."
-                    if full_file_mode
-                    else (
-                        "You already called locate_bug. Continue with the "
-                        "apply_edit tool now; do not read or relocalize."
-                    )
-                )
-            else:
-                content = (
-                    "Continue with tool calls: locate_bug, then "
-                    "write_solution(code=complete_file). Do not answer in prose only."
-                    if full_file_mode
-                    else (
-                        "Continue with tool calls: locate_bug, apply_edit, then "
-                        "write_solution. Do not answer in prose only."
-                    )
-                )
             messages.append({
                 "role": "user",
-                "content": content,
-            })
-            continue
-        local_no_ops = 0
-
-        stop = _dispatch_tool_calls(
-            resp["tool_calls"], env, state, messages,
-            max_tool_calls,
-            task_stem, dataset_dir, input_meta, config, output_dir,
-            client, prompt_text,
-            json_action=use_json_action,
-        )
-        if state.iteration > prev_iter:
-            _attach_blackboard_to_latest_record(state, board)
-            if stop is not None:
-                return stop
-            return "submitted"
-        if stop is not None:
-            return stop
-
-        guard_stop = _auto_submit_after_apply_edit(
-            env, state, messages,
-            max_tool_calls,
-            task_stem, dataset_dir, input_meta, config, output_dir,
-            client, prompt_text,
-            json_action=use_json_action,
-        )
-        if state.iteration > prev_iter:
-            _attach_blackboard_to_latest_record(state, board)
-            if guard_stop is not None:
-                return guard_stop
-            return "submitted"
-        if guard_stop is not None:
-            return guard_stop
-
-    return "coder_no_submission"
-
-
-def _run_no_blackboard_coder_once(
-    client,
-    config: dict,
-    env: ToolEnv,
-    state: _LoopState,
-    reports: _NoBlackboardReports,
-    task_stem: str,
-    dataset_dir: Path,
-    input_meta: dict,
-    output_dir: Path,
-    prompt_text: str,
-    max_tool_calls: int,
-    asst_content_cap: int,
-) -> str | None:
-    agent_cfg = config.get("agent", {}) or {}
-    bb_cfg = agent_cfg.get("blackboard") or {}
-    max_turns = int(bb_cfg.get("max_coder_turns", 8))
-    coder_tools = bb_cfg.get("coder_tools") or [
-        "read_code",
-        "read_test_file",
-        "read_prompt",
-        "locate_bug",
-        "apply_edit",
-        "write_solution",
-        "build_only",
-    ]
-    full_file_mode = _full_file_submissions(config)
-    if full_file_mode:
-        coder_tools = [t for t in coder_tools if t != "apply_edit"]
-    tool_decision_max_tokens, tool_decision_temperature = (
-        _tool_decision_overrides(agent_cfg)
-    )
-    use_json_action = _json_action_enabled(config)
-    json_response_format = bool(agent_cfg.get("json_action_response_format", True))
-    force_locate_first = bool(
-        bb_cfg.get(
-            "coder_force_locate_first",
-            agent_cfg.get("coder_force_locate_first", True),
-        )
-    )
-    state.located_this_iteration = False
-    state.pending_location = None
-    state.applied_edit_this_iteration = False
-    local_no_ops = 0
-    repeated_failure_alert = _repeated_failure_alert(state)
-    repeat_section = (
-        f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
-        if repeated_failure_alert
-        else ""
-    )
-    coder_instruction = (
-        "Submit a complete revised solution file based on the verified role reports.\n\n"
-        if full_file_mode
-        else "Apply a minimal fix based on the verified role reports.\n\n"
-    )
-    messages: list[dict] = [
-        {"role": "system", "content": CODER_SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                coder_instruction
-                + "No shared error blackboard is available in this ablation.\n\n"
-                + "## Task Prompt\n"
-                + f"{_truncate_text(prompt_text, 4000)}\n\n"
-                + "## Current Candidate (full file)\n"
-                + "```cuda\n"
-                + f"{env.current_code}\n"
-                + "```\n\n"
-                + "## Previous Failed Attempts\n"
-                + f"{_attempt_history_prompt(state)}\n\n"
-                + f"{repeat_section}"
-                + "## Role Reports and Verifier Direction\n"
-                + f"{reports.to_prompt_block()}\n"
-            ),
-        },
-    ]
-
-    for _ in range(max_turns):
-        in_locate_phase = (
-            bool(env.current_code.strip()) and not state.located_this_iteration
-        )
-        must_edit_phase = (
-            bool(env.current_code.strip())
-            and state.located_this_iteration
-            and not state.applied_edit_this_iteration
-            and not state.force_read_code_reason
-        )
-        if state.force_read_code_reason:
-            tools = schemas_for_config([
-                t for t in ("read_code", "write_solution") if t in coder_tools
-            ], require_full_solution_code=full_file_mode)
-            action_context = _forced_action_context(state)
-        elif in_locate_phase and force_locate_first:
-            tools = schemas_for_config(
-                ["locate_bug"] if "locate_bug" in coder_tools else [],
-                require_full_solution_code=full_file_mode,
-            )
-            action_context = _join_decision_constraints(
-                _forced_action_context(state),
-                "The analyzer, executor, and verifier have already produced "
-                "the role reports. Your next action must be `locate_bug` using "
-                "the verified line-level bug report; do not investigate further "
-                "in the coder role.",
-            )
-        elif must_edit_phase:
-            if full_file_mode:
-                tools = schemas_for_config(
-                    ["write_solution"] if "write_solution" in coder_tools else [],
-                    require_full_solution_code=True,
-                )
-                action_context = _join_decision_constraints(
-                    _forced_action_context(state),
-                    "You already located the bug. Your next action must be "
-                    "`write_solution` with a complete revised `code` file. "
-                    "Include the entire solution file, not a diff, snippet, "
-                    "or only the changed lines. Do not read or relocalize.",
-                )
-            else:
-                tools = schemas_for_config(
-                    [
-                        t for t in ("apply_edit",)
-                        if t in coder_tools
-                    ]
-                )
-                action_context = _join_decision_constraints(
-                    _forced_action_context(state),
-                    "You already located the bug. Your next action must be "
-                    "`apply_edit` with a minimal replacement or line-range edit. "
-                    "If exact matching is brittle or an `apply_edit` mismatch "
-                    "blocks progress, call `write_solution` with a complete "
-                    "revised `code` file so the candidate reaches build/test. Do "
-                    "not read or relocalize.",
-                )
-        else:
-            tools = _tools_for_phase(
-                coder_tools,
-                in_locate_phase=in_locate_phase,
-                require_full_solution_code=full_file_mode,
-            )
-            action_context = _forced_action_context(state)
-        prev_iter = state.iteration
-        request_max_tokens = tool_decision_max_tokens
-        request_temperature = tool_decision_temperature
-        if use_json_action:
-            action_request = _json_action_request(
-                tools,
-                in_locate_phase,
-                extra_context=action_context,
-            )
-            request_messages = messages + [{"role": "user", "content": action_request}]
-            resp = _call_json_action_or_record_api_error(
-                client,
-                config,
-                request_messages,
-                state,
-                task_stem,
-                input_meta,
-                max_tokens=request_max_tokens,
-                temperature=request_temperature,
-                response_format=json_response_format,
-                role="coder",
-            )
-            if resp is None:
-                return "api_error"
-            raw_content = resp.get("content") or ""
-            messages.append({
-                "role": "assistant",
-                "content": _sanitize_assistant_content(
-                    raw_content, max_chars=asst_content_cap
+                "content": (
+                    "Continue with tool calls: call `locate_bug` first."
+                    if in_locate_phase
+                    else (
+                        "Continue with tool calls: apply the verified fix and "
+                        "submit it with `write_solution`. Do not answer in "
+                        "prose only."
+                    )
                 ),
             })
-            try:
-                action = _extract_json_action(raw_content)
-                tc = _action_to_tool_call(
-                    action,
-                    _tool_names(tools),
-                    call_id=f"coder_json_action_{len(env.trace) + 1}",
-                )
-                resp = {"tool_calls": [tc]}
-            except ValueError as e:
-                local_no_ops += 1
-                _append_action_result_message(
-                    messages,
-                    "parse_json_action",
-                    f"[invalid JSON action] {e}\nRaw response:\n{raw_content[:1000]}",
-                    ok=False,
-                )
-                if local_no_ops >= 2:
-                    return "coder_action_parse_error"
-                continue
-        else:
-            resp = _call_llm_or_record_api_error(
-                client, config, messages, tools, state, task_stem, input_meta,
-                max_tokens=request_max_tokens,
-                temperature=request_temperature,
-                role="coder",
-            )
-            if resp is None:
-                return "api_error"
-            _append_assistant_message(messages, resp, asst_content_cap)
-
-        if not resp["tool_calls"]:
-            local_no_ops += 1
-            if local_no_ops >= 2:
-                return "coder_no_op"
-            if must_edit_phase:
-                content = (
-                    "You already called locate_bug. Continue with "
-                    "`write_solution(code=...)` using the complete revised "
-                    "solution file; do not read or relocalize."
-                    if full_file_mode
-                    else (
-                        "You already called locate_bug. Continue with the "
-                        "apply_edit tool now; do not read or relocalize."
-                    )
-                )
-            else:
-                content = (
-                    "Continue with tool calls: locate_bug, then "
-                    "write_solution(code=complete_file). Do not answer in prose only."
-                    if full_file_mode
-                    else (
-                        "Continue with tool calls: locate_bug, apply_edit, then "
-                        "write_solution. Do not answer in prose only."
-                    )
-                )
-            messages.append({
-                "role": "user",
-                "content": content,
-            })
             continue
         local_no_ops = 0
 
@@ -1319,29 +1022,36 @@ def _run_no_blackboard_coder_once(
             task_stem, dataset_dir, input_meta, config, output_dir,
             client, prompt_text,
             json_action=use_json_action,
+            allow_staged_edits=True,
         )
         if state.iteration > prev_iter:
-            _attach_no_blackboard_to_latest_record(state, reports)
+            _record_board_attempt(state, board)
+            _attach_blackboard_to_latest_record(state, board)
             if stop is not None:
                 return stop
             return "submitted"
         if stop is not None:
             return stop
 
-        guard_stop = _auto_submit_after_apply_edit(
-            env, state, messages,
-            max_tool_calls,
-            task_stem, dataset_dir, input_meta, config, output_dir,
-            client, prompt_text,
-            json_action=use_json_action,
-        )
-        if state.iteration > prev_iter:
-            _attach_no_blackboard_to_latest_record(state, reports)
+        if last_turn:
+            # A staged edit is submitted even if the coder omitted
+            # write_solution; earlier turns may keep editing or build first.
+            guard_stop = _auto_submit_after_apply_edit(
+                env, state, messages,
+                max_tool_calls,
+                task_stem, dataset_dir, input_meta, config, output_dir,
+                client, prompt_text,
+                json_action=use_json_action,
+                allow_staged_edits=True,
+            )
+            if state.iteration > prev_iter:
+                _record_board_attempt(state, board)
+                _attach_blackboard_to_latest_record(state, board)
+                if guard_stop is not None:
+                    return guard_stop
+                return "submitted"
             if guard_stop is not None:
                 return guard_stop
-            return "submitted"
-        if guard_stop is not None:
-            return guard_stop
 
     return "coder_no_submission"
 
@@ -1354,7 +1064,7 @@ def run_task_blackboard_agent(
     client,
     broken_start: dict | None = None,
 ) -> tuple[list[dict], str]:
-    """Run analyzer -> executor -> verifier -> coder over a shared board."""
+    """Run analyzer -> executor -> verifier -> coder -> router over a shared board."""
     logger.info(f"=== [blackboard agent] Starting task: {task_stem} ===")
     if not broken_start:
         raise ValueError(
@@ -1373,6 +1083,8 @@ def run_task_blackboard_agent(
         broken_start, prompt_text, env, state,
         config, task_stem, dataset_dir, input_meta,
     )
+    ctx_cfg = _build_ctx_config(agent_cfg)
+    summarizer = _maybe_make_summarizer(agent_cfg, client, config)
 
     max_patch_submissions = _max_patch_submissions(config)
     max_tool_calls = int(agent_cfg.get("max_tool_calls_per_task", 40))
@@ -1392,13 +1104,19 @@ def run_task_blackboard_agent(
     # Guided repair loop. The first round always analyzes; after a failed
     # submission the router decides whether the next round re-analyzes
     # (analyzer + executor) or just retries the fix (verifier + coder) using
-    # the existing evidence.
+    # the existing evidence. The board persists across rounds: a new
+    # analysis round archives the previous bug records instead of dropping
+    # them, and attempt records accumulate.
     need_analysis = True
-    board: ErrorBlackboard | None = None
+    board = ErrorBlackboard(task_stem=task_stem)
+    # Seed the intended execution strategy from the starting candidate; the
+    # analyzer and verifier refine it.
+    board.execution_strategy = describe_strategy(env.current_code)
     route_diagnosis: dict | None = None
 
     while state.iteration < max_patch_submissions:
         repeated_failure_alert = _repeated_failure_alert(state)
+        board.repeated_failure_alert = repeated_failure_alert
         tried_strategies = _tried_strategies_prompt(state)
         repeat_section = (
             f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
@@ -1406,14 +1124,15 @@ def run_task_blackboard_agent(
             else ""
         )
 
-        if need_analysis or board is None:
-            board = ErrorBlackboard(task_stem=task_stem)
+        if need_analysis:
+            board.begin_analysis_round()
             runtime = _collect_runtime_observation(
                 env, task_stem, dataset_dir, input_meta, config,
             )
             board.runtime_trace["initial_observation"] = runtime
             cls = runtime.get("classification") or {}
             board.error_type = cls.get("category") or cls.get("five_category")
+            board.candidate_meta = _candidate_meta(env.current_code, input_meta)
 
             analyzer_prompt = (
                 "Populate the static side of the shared blackboard.\n\n"
@@ -1423,8 +1142,7 @@ def run_task_blackboard_agent(
                 "```cuda\n"
                 f"{_truncate_text(env.current_code, 12000)}\n"
                 "```\n\n"
-                "## Previous Failed Attempts\n"
-                f"{_attempt_history_prompt(state)}\n\n"
+                f"{_role_context(board, 'analyzer', config, env.current_code, _attempt_history_prompt(state))}"
                 f"{repeat_section}"
                 "Read code/test/prompt as needed, call run_static_analysis, "
                 "then locate concrete suspected lines and finish with a report."
@@ -1433,22 +1151,23 @@ def run_task_blackboard_agent(
                 "analyzer", ANALYZER_SYSTEM_PROMPT, analyzer_prompt,
                 analyzer_tools, client, config, env, state, board,
                 task_stem, input_meta, max_role_turns, max_tool_calls,
-                asst_content_cap,
+                asst_content_cap, ctx_cfg=ctx_cfg, summarizer=summarizer,
             )
-            board.analyzer_report = analyzer.report
+            board.record_report("analyzer", analyzer.report)
             if analyzer.stop_reason:
                 state.stop_reason = analyzer.stop_reason
                 break
 
             executor_prompt = (
                 "Populate the runtime side of the shared blackboard.\n\n"
+                "## Current Candidate\n"
+                "```cuda\n"
+                f"{_truncate_text(env.current_code, 12000)}\n"
+                "```\n\n"
                 "## Initial Runtime Observation\n"
                 f"{json.dumps(runtime, indent=2, ensure_ascii=False)}\n\n"
-                "## Previous Failed Attempts\n"
-                f"{_attempt_history_prompt(state)}\n\n"
+                f"{_role_context(board, 'executor', config, env.current_code, _attempt_history_prompt(state))}"
                 f"{repeat_section}"
-                "## Current Blackboard\n"
-                f"{_board_block(board, 'executor', config)}\n\n"
                 "Choose the Compute Sanitizer mode based on the error category "
                 "and hypothesis. Combine sanitizer output with static evidence; "
                 "do not treat a clean sanitizer run as proof of correctness. "
@@ -1458,9 +1177,9 @@ def run_task_blackboard_agent(
                 "executor", EXECUTOR_SYSTEM_PROMPT, executor_prompt,
                 executor_tools, client, config, env, state, board,
                 task_stem, input_meta, max_role_turns, max_tool_calls,
-                asst_content_cap,
+                asst_content_cap, ctx_cfg=ctx_cfg, summarizer=summarizer,
             )
-            board.executor_report = executor.report
+            board.record_report("executor", executor.report)
             if executor.stop_reason:
                 state.stop_reason = executor.stop_reason
                 break
@@ -1485,6 +1204,7 @@ def run_task_blackboard_agent(
             client, config, env, state, board,
             task_stem, dataset_dir, input_meta, output_dir, prompt_text,
             max_tool_calls, asst_content_cap,
+            ctx_cfg=ctx_cfg, summarizer=summarizer,
         )
         if coder_stop == "submitted":
             # A patch was submitted but did not pass. Let the router decide
@@ -1493,6 +1213,7 @@ def run_task_blackboard_agent(
             latest_attempt = (
                 state.attempt_history[-1] if state.attempt_history else None
             )
+            board.repeated_failure_alert = _repeated_failure_alert(state)
             route = _run_route_decision(
                 client, config, state,
                 candidate_code=env.current_code,
@@ -1500,7 +1221,12 @@ def run_task_blackboard_agent(
                 next_fix=board.next_fix,
                 latest_attempt=latest_attempt,
                 tried_strategies=_tried_strategies_prompt(state),
+                board=board,
+                repeated_failure_alert=board.repeated_failure_alert,
             )
+            board.record_route(route, state.iteration)
+            if latest_attempt is not None:
+                latest_attempt["route"] = route
             need_analysis = route["next_action"] == "reanalyze"
             route_diagnosis = None if need_analysis else route
             logger.info(
@@ -1510,6 +1236,7 @@ def run_task_blackboard_agent(
             continue
         if _is_recoverable_coder_stop(coder_stop):
             _record_coder_non_submission(state, coder_stop or "coder_no_submission")
+            _record_board_attempt(state, board)
             _write_tool_trace(
                 output_dir,
                 task_stem,
@@ -1540,204 +1267,3 @@ def run_task_blackboard_agent(
 
     _write_tool_trace(output_dir, task_stem, env, state)
     return state.records, state.stop_reason
-
-
-def run_task_multi_role_no_blackboard_agent(
-    task_stem: str,
-    dataset_dir: Path,
-    output_dir: Path,
-    config: dict,
-    client,
-    broken_start: dict | None = None,
-) -> tuple[list[dict], str]:
-    """Run analyzer -> executor -> verifier -> coder without a shared board."""
-    logger.info(f"=== [multi-role no-blackboard agent] Starting task: {task_stem} ===")
-    if not broken_start:
-        raise ValueError(
-            "run_task_multi_role_no_blackboard_agent requires `broken_start` — "
-            "the agent loop is debug-only."
-        )
-
-    input_meta = load_input_meta(task_stem, dataset_dir)
-    prompt_text = load_prompt_text(task_stem, dataset_dir)
-
-    agent_cfg = config.get("agent", {}) or {}
-    bb_cfg = agent_cfg.get("blackboard") or {}
-    env = _build_tool_env(task_stem, dataset_dir, input_meta, config, agent_cfg)
-    state = _LoopState()
-    _seed_broken_start(
-        broken_start, prompt_text, env, state,
-        config, task_stem, dataset_dir, input_meta,
-    )
-
-    max_patch_submissions = _max_patch_submissions(config)
-    max_tool_calls = int(agent_cfg.get("max_tool_calls_per_task", 40))
-    asst_content_cap = int(agent_cfg.get("assistant_content_cap", 2000))
-    max_role_turns = int(bb_cfg.get("max_role_turns", 3))
-    max_non_submission_rounds = _max_coder_non_submission_rounds(config)
-    analyzer_tools = bb_cfg.get("analyzer_tools") or [
-        "read_code", "read_test_file", "read_prompt", "run_static_analysis", "locate_bug",
-    ]
-    executor_tools = bb_cfg.get("executor_tools") or [
-        "read_code", "read_test_file", "build_only", "test_only",
-        "run_compute_sanitizer", "locate_bug",
-    ]
-
-    state.stop_reason = _patch_submission_limit_stop_reason(config)
-    need_analysis = True
-    reports: _NoBlackboardReports | None = None
-    route_diagnosis: dict | None = None
-
-    while state.iteration < max_patch_submissions:
-        repeated_failure_alert = _repeated_failure_alert(state)
-        tried_strategies = _tried_strategies_prompt(state)
-        repeat_section = (
-            f"## Repeated Failure Alert\n{repeated_failure_alert}\n\n"
-            if repeated_failure_alert
-            else ""
-        )
-
-        if need_analysis or reports is None:
-            runtime = _collect_runtime_observation(
-                env, task_stem, dataset_dir, input_meta, config,
-            )
-            cls = runtime.get("classification") or {}
-            reports = _NoBlackboardReports(
-                task_stem=task_stem,
-                initial_observation=runtime,
-                error_type=cls.get("category") or cls.get("five_category"),
-            )
-
-            analyzer_prompt = (
-                "Produce the static-analysis report for this no-shared-blackboard "
-                "ablation. Do not rely on any shared mutable blackboard; your "
-                "final report is the only evidence passed forward.\n\n"
-                "## Task Prompt\n"
-                f"{_truncate_text(prompt_text, 4000)}\n\n"
-                "## Current Candidate\n"
-                "```cuda\n"
-                f"{_truncate_text(env.current_code, 12000)}\n"
-                "```\n\n"
-                "## Previous Failed Attempts\n"
-                f"{_attempt_history_prompt(state)}\n\n"
-                f"{repeat_section}"
-                "Read code/test/prompt as needed, call run_static_analysis, "
-                "then locate concrete suspected lines and finish with a report."
-            )
-            analyzer = _run_tool_role_agent(
-                "analyzer", ANALYZER_SYSTEM_PROMPT, analyzer_prompt,
-                analyzer_tools, client, config, env, state, None,
-                task_stem, input_meta, max_role_turns, max_tool_calls,
-                asst_content_cap,
-            )
-            reports.analyzer_report = analyzer.report
-            if analyzer.stop_reason:
-                state.stop_reason = analyzer.stop_reason
-                break
-
-            executor_prompt = (
-                "Produce the runtime-diagnostics report for this "
-                "no-shared-blackboard ablation. Do not write to or depend on a "
-                "shared mutable blackboard; your final report is the only "
-                "runtime evidence passed forward.\n\n"
-                "## Initial Runtime Observation\n"
-                f"{json.dumps(runtime, indent=2, ensure_ascii=False)}\n\n"
-                "## Previous Failed Attempts\n"
-                f"{_attempt_history_prompt(state)}\n\n"
-                f"{repeat_section}"
-                "## Analyzer Report\n"
-                f"{json.dumps(reports.analyzer_report, indent=2, ensure_ascii=False)}\n\n"
-                "Choose the Compute Sanitizer mode based on the error category "
-                "and hypothesis. Combine sanitizer output with static evidence; "
-                "do not treat a clean sanitizer run as proof of correctness. "
-                "Finish with a report."
-            )
-            executor = _run_tool_role_agent(
-                "executor", EXECUTOR_SYSTEM_PROMPT, executor_prompt,
-                executor_tools, client, config, env, state, None,
-                task_stem, input_meta, max_role_turns, max_tool_calls,
-                asst_content_cap,
-            )
-            reports.executor_report = executor.report
-            if executor.stop_reason:
-                state.stop_reason = executor.stop_reason
-                break
-
-        verifier = _run_no_blackboard_verifier(
-            client,
-            config,
-            state,
-            reports,
-            prompt_text,
-            env.current_code,
-            attempt_history=_attempt_history_prompt(state),
-            repeated_failure_alert=repeated_failure_alert,
-            tried_strategies=tried_strategies,
-            route_diagnosis=route_diagnosis,
-        )
-        if verifier.stop_reason:
-            state.stop_reason = verifier.stop_reason
-            break
-
-        coder_stop = _run_no_blackboard_coder_once(
-            client, config, env, state, reports,
-            task_stem, dataset_dir, input_meta, output_dir, prompt_text,
-            max_tool_calls, asst_content_cap,
-        )
-        if coder_stop == "submitted":
-            state.non_submission_rounds = 0
-            latest_attempt = (
-                state.attempt_history[-1] if state.attempt_history else None
-            )
-            route = _run_route_decision(
-                client, config, state,
-                candidate_code=env.current_code,
-                located=(latest_attempt or {}).get("located"),
-                next_fix=reports.next_fix,
-                latest_attempt=latest_attempt,
-                tried_strategies=_tried_strategies_prompt(state),
-            )
-            need_analysis = route["next_action"] == "reanalyze"
-            route_diagnosis = None if need_analysis else route
-            logger.info(
-                "  [no-blackboard router] next_action=%s diagnosis=%s reason=%s",
-                route["next_action"], route.get("diagnosis"), route.get("reason"),
-            )
-            continue
-        if _is_recoverable_coder_stop(coder_stop):
-            _record_coder_non_submission(state, coder_stop or "coder_no_submission")
-            _write_tool_trace(
-                output_dir,
-                task_stem,
-                env,
-                state,
-                stop_reason=coder_stop or "coder_no_submission",
-            )
-            logger.warning(
-                "  [no-blackboard coder] no patch submitted: %s (%d/%d); "
-                "continuing with a fresh diagnosis",
-                coder_stop,
-                state.non_submission_rounds,
-                max_non_submission_rounds,
-            )
-            if state.non_submission_rounds >= max_non_submission_rounds:
-                state.stop_reason = coder_stop or "coder_no_submission"
-                break
-            need_analysis = True
-            route_diagnosis = None
-            continue
-        if coder_stop is not None:
-            state.stop_reason = coder_stop
-            break
-
-    if state.records:
-        state.records[-1]["stop_reason"] = state.stop_reason
-        state.records[-1]["token_usage"] = _token_usage_summary(state)
-
-    _write_tool_trace(output_dir, task_stem, env, state)
-    return state.records, state.stop_reason
-
-
-# ---------------------------------------------------------------------------
-# Main entry
-# ---------------------------------------------------------------------------

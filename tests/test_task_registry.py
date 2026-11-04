@@ -38,3 +38,20 @@ def test_load_reference_can_materialize_from_task_registry():
     assert ref.task_id == "cuda_137__memory_crash__9b14b4ef"
     assert ref.timing_mode.type == "cuda_event_stdout"
     assert ref.reference_solution.type == "file"
+
+
+def test_copy_testbench_contents_keeps_relative_links_resolvable(tmp_path):
+    from harness.task_registry import _absolutize_relative_symlinks
+
+    ext = tmp_path / "data" / "_external" / "cutlass"
+    (ext / "include").mkdir(parents=True)
+    src = tmp_path / "data" / "inst" / "testbench"
+    (src / "reference_sources").mkdir(parents=True)
+    (src / "reference_sources" / "cutlass").symlink_to("../../../_external/cutlass")
+    dst = tmp_path / "work"
+    import shutil
+    shutil.copytree(src, dst, symlinks=True)
+    assert not (dst / "reference_sources" / "cutlass").exists()
+
+    _absolutize_relative_symlinks(src, dst)
+    assert (dst / "reference_sources" / "cutlass" / "include").is_dir()

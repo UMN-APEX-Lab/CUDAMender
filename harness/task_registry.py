@@ -287,8 +287,26 @@ def copy_testbench_contents(task_stem: str, dataset_dir: Path | str, dst: Path) 
     src = resolve_task_paths(task_stem, dataset_dir).testbench_path
     if src.exists():
         shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=True)
+        _absolutize_relative_symlinks(src, dst)
         supplement_thunderkittens_headers(dst)
     return src
+
+
+def _absolutize_relative_symlinks(src: Path, dst: Path) -> None:
+    """Re-point relative symlinks copied from ``src`` so they still resolve in ``dst``.
+
+    Testbenches ship ``reference_sources/{cutlass,ThunderKittens}`` as relative
+    links into ``data/_external/``; copied verbatim into a workdir they dangle.
+    """
+    for root, dirs, files in os.walk(dst):
+        for name in dirs + files:
+            link = Path(root) / name
+            if not link.is_symlink() or os.path.isabs(os.readlink(link)):
+                continue
+            target = Path(os.path.realpath(src / link.relative_to(dst)))
+            if target.exists():
+                link.unlink()
+                link.symlink_to(target)
 
 
 def repo_relative(path: Path) -> str:

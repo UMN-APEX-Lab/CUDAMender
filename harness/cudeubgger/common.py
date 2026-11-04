@@ -10,7 +10,8 @@ from pathlib import Path
 
 from ..agent_tools import schemas_for_config
 from ..context_manager import ContextConfig, estimate_tokens
-from ..context_summary import make_summarizer
+from ..context_summary import make_rule_based_summarizer, make_summarizer
+from .memory import attempt_memory
 from .prompts import ACTION_RESULT_TEMPLATE, JSON_ACTION_OUTPUT_DISCIPLINE
 
 logger = logging.getLogger("cuda_debugger_exp")
@@ -184,29 +185,29 @@ def _patch_submission_limit_stop_reason(config: dict) -> str:
 def _scoped_views_enabled(config: dict) -> bool:
     """Whether blackboard roles receive role-scoped board projections.
 
-    Default False preserves the legacy behavior where every role sees the
-    full board dump. When True, each role gets only the slice it needs
-    (see ``ErrorBlackboard.view_for``) — primarily to cut the coder's
-    redundant token cost.
+    Default True: each role gets only the slice of the board it needs
+    (see ``ErrorBlackboard.view_for``). ``scoped_views: false`` restores the
+    legacy behavior where every role sees the full board dump.
     """
     bb_cfg = (config.get("agent", {}) or {}).get("blackboard") or {}
-    return bool(bb_cfg.get("scoped_views", False)) if isinstance(bb_cfg, dict) else False
+    return bool(bb_cfg.get("scoped_views", True)) if isinstance(bb_cfg, dict) else True
 
 
 def _structured_reports_enabled(config: dict) -> bool:
     """Whether analyzer/executor finish with a structured report object
     instead of free-text prose.
 
-    Default False keeps the legacy free-text ``final_report``. When True,
-    each role emits a bounded ``{summary, key_points, ruled_out}`` object
-    (see ``_normalize_structured_report``) — smaller and machine-consumable
-    for the verifier. Only takes effect on the JSON-action protocol.
+    Default True: each role emits a bounded
+    ``{summary, key_points, ruled_out, execution_strategy}`` object (see
+    ``_normalize_structured_report``) — smaller and machine-consumable for
+    the verifier. ``structured_reports: false`` restores the legacy
+    free-text ``final_report``. Only takes effect on the JSON-action protocol.
     """
     bb_cfg = (config.get("agent", {}) or {}).get("blackboard") or {}
     return (
-        bool(bb_cfg.get("structured_reports", False))
+        bool(bb_cfg.get("structured_reports", True))
         if isinstance(bb_cfg, dict)
-        else False
+        else True
     )
 
 
@@ -231,11 +232,16 @@ def _normalize_structured_report(raw) -> dict:
             "key_points": [],
             "ruled_out": [],
         }
-    return {
-        "summary": _truncate_text(str(raw.get("summary") or ""), 400),
+    report = {
+        # A model that ignores the contract and emits {"report": "..."} still
+        # yields a usable summary.
+        "summary": _truncate_text(str(raw.get("summary") or raw.get("report") or ""), 400),
         "key_points": _bounded_list(raw.get("key_points"), 4, 200),
         "ruled_out": _bounded_list(raw.get("ruled_out"), 4, 200),
     }
+    if raw.get("execution_strategy"):
+        report["execution_strategy"] = _truncate_text(str(raw["execution_strategy"]), 400)
+    return report
 
 
 def _chars_per_token(config: dict) -> float:
@@ -473,10 +479,18 @@ class _LoopState:
 class ErrorBlackboard:
     """Shared evidence board for the blackboard workflow.
 
-    The board is intentionally plain JSON-serialisable data: analyzer,
-    executor, verifier, and coder all see the same object rendered into
-    their prompts, and the final manifest record stores the same shape for
-    later audit.
+    The board stores typed debugging records rather than an append-only
+    transcript. Bug records (error type, suspicious lines, static flags,
+    runtime traces, agent reports, verified bug reports) describe the
+    current analysis round; attempt records (submitted fixes, routing
+    decisions, validation feedback, performance results) persist across
+    rounds. ``begin_analysis_round`` archives the previous round's bug
+    records instead of discarding them, so later views can retrieve prior
+    suspicious lines, earlier diagnoses, and ruled-out hypotheses.
+
+    The board is plain JSON-serialisable data; before each turn the harness
+    materializes a role-specific view (``view_for``), and the final manifest
+    record stores the full shape for later audit.
     """
 
     task_stem: str
@@ -484,14 +498,26 @@ class ErrorBlackboard:
     error_type: str | None = None
     static_flags: list[dict] = field(default_factory=list)
     runtime_trace: dict = field(default_factory=dict)
-    # analyzer/executor reports are free-text str by default, or a structured
-    # {summary, key_points, ruled_out} dict when structured_reports is on.
+    # analyzer/executor reports are a structured
+    # {summary, key_points, ruled_out[, execution_strategy]} dict by default,
+    # or free-text str when structured_reports is off.
     analyzer_report: str | dict | None = None
     executor_report: str | dict | None = None
     verifier_report: str | None = None
+    verifier_payload: dict | None = None
     fix_suggestions: list[str] = field(default_factory=list)
     # The single concrete fix direction the verifier hands the coder (gap 4).
     next_fix: str | None = None
+    # -- persistent across analysis rounds --
+    candidate_meta: dict = field(default_factory=dict)
+    prior_suspected_lines: list[dict] = field(default_factory=list)
+    previous_diagnoses: list[dict] = field(default_factory=list)
+    ruled_out: list[str] = field(default_factory=list)
+    # Intended GPU execution strategy the repair must preserve.
+    execution_strategy: str | None = None
+    attempts: list[dict] = field(default_factory=list)
+    routing_decisions: list[dict] = field(default_factory=list)
+    repeated_failure_alert: str | None = None
 
     def add_suspected_line(self, line: dict) -> None:
         key = (
@@ -511,6 +537,87 @@ class ErrorBlackboard:
                 return
         self.suspected_lines.append(line)
 
+    # -- record writers --
+
+    def begin_analysis_round(self) -> None:
+        """Archive the current round's bug records and clear them for a
+        fresh Analyzer/Executor pass. Attempt records are kept."""
+        for line in self.suspected_lines:
+            if line not in self.prior_suspected_lines:
+                self.prior_suspected_lines.append(line)
+        self.prior_suspected_lines = self.prior_suspected_lines[-16:]
+        if self.verifier_payload:
+            self.previous_diagnoses.append(self.verifier_payload)
+            self.previous_diagnoses = self.previous_diagnoses[-5:]
+        self.suspected_lines = []
+        self.static_flags = []
+        self.runtime_trace = {}
+        self.analyzer_report = None
+        self.executor_report = None
+        self.verifier_report = None
+        self.verifier_payload = None
+        self.fix_suggestions = []
+        self.next_fix = None
+
+    def record_report(self, role: str, report: str | dict | None) -> None:
+        if role == "analyzer":
+            self.analyzer_report = report
+        elif role == "executor":
+            self.executor_report = report
+        if not isinstance(report, dict):
+            return
+        for item in report.get("ruled_out") or []:
+            if item and item not in self.ruled_out:
+                self.ruled_out.append(item)
+        self.ruled_out = self.ruled_out[-12:]
+        strategy = report.get("execution_strategy")
+        if strategy:
+            self.execution_strategy = str(strategy)
+
+    def record_attempt(self, summary: dict) -> None:
+        self.attempts.append(summary)
+
+    def record_route(self, route: dict, iteration: int | None) -> None:
+        entry = {"iteration": iteration, **route}
+        self.routing_decisions.append(entry)
+        if self.attempts and self.attempts[-1].get("iteration") == iteration:
+            self.attempts[-1]["routing_decision"] = route
+
+    # -- derived fields --
+
+    def failed_fix_directions(self) -> list[dict]:
+        return [
+            {
+                "iteration": a.get("iteration"),
+                "fix_direction": a.get("attempted_fix"),
+                "outcome": a.get("validation_outcome"),
+            }
+            for a in self.attempts
+            if a.get("validation_outcome") not in (None, "passed")
+        ]
+
+    def performance_feedback(self) -> dict | None:
+        for a in reversed(self.attempts):
+            perf = a.get("performance") or {}
+            if perf and perf.get("passed") is False:
+                return {
+                    "iteration": a.get("iteration"),
+                    "speedup": perf.get("speedup"),
+                    "min_speedup": perf.get("min_speedup"),
+                    "failure_reason": a.get("failure_reason"),
+                }
+        return None
+
+    def latest_failed_patch_reason(self) -> dict | None:
+        for a in reversed(self.attempts):
+            if a.get("validation_outcome") not in (None, "passed"):
+                return {
+                    "iteration": a.get("iteration"),
+                    "outcome": a.get("validation_outcome"),
+                    "failure_reason": a.get("failure_reason"),
+                }
+        return None
+
     def to_dict(self) -> dict:
         return {
             "task_stem": self.task_stem,
@@ -523,11 +630,18 @@ class ErrorBlackboard:
             "verifier_report": self.verifier_report,
             "fix_suggestions": self.fix_suggestions,
             "next_fix": self.next_fix,
+            "candidate_meta": self.candidate_meta,
+            "prior_suspected_lines": self.prior_suspected_lines,
+            "previous_diagnoses": self.previous_diagnoses,
+            "ruled_out": self.ruled_out,
+            "execution_strategy": self.execution_strategy,
+            "attempts": self.attempts,
+            "routing_decisions": self.routing_decisions,
         }
 
     def to_prompt_block(self, max_chars: int = 14000) -> str:
         return _truncate_text(
-            json.dumps(self.to_dict(), indent=2, ensure_ascii=False),
+            json.dumps(self.to_dict(), indent=2, ensure_ascii=False, default=str),
             max_chars,
         )
 
@@ -583,20 +697,33 @@ class ErrorBlackboard:
         return self.runtime_trace.get("initial_observation")
 
     def view_for(self, role: str, max_chars: int = 14000) -> str:
-        """Render only the slice of the board a given role needs.
+        """V_R(B): render only the slice of the board a given role needs.
 
         Unknown roles fall back to the full dump. The coder view is
-        deliberately strict: only the verified bug report, fix suggestions,
-        and the latest runtime result — not the analyzer/executor/verifier
-        free-text reports, raw static flags, or full runtime trace.
+        deliberately strict: only the verified bug report, the single fix
+        direction, repair constraints, and the latest runtime result — not
+        the analyzer/executor/verifier free-text reports, raw static flags,
+        or full runtime trace.
         """
-        if role == "executor":
+        if role == "analyzer":
             view = {
                 "task_stem": self.task_stem,
                 "error_type": self.error_type,
+                "candidate_meta": self.candidate_meta,
+                "initial_observation": self.runtime_trace.get("initial_observation"),
+                "prior_suspected_lines": self.prior_suspected_lines[-8:],
+                "failed_fix_directions": self.failed_fix_directions(),
+                "ruled_out": self.ruled_out,
+            }
+        elif role == "executor":
+            view = {
+                "task_stem": self.task_stem,
+                "error_type": self.error_type,
+                "analyzer_report": self.analyzer_report,
                 "suspected_lines": self.suspected_lines,
                 "static_flags": self._compact_static_flags(),
                 "initial_observation": self.runtime_trace.get("initial_observation"),
+                "latest_validation": self.latest_failed_patch_reason(),
             }
         elif role == "verifier":
             view = {
@@ -607,6 +734,11 @@ class ErrorBlackboard:
                 "runtime_trace": self._runtime_summary(),
                 "analyzer_report": self.analyzer_report,
                 "executor_report": self.executor_report,
+                "previous_diagnoses": self.previous_diagnoses[-3:],
+                "failed_fix_directions": self.failed_fix_directions(),
+                "performance_feedback": self.performance_feedback(),
+                "execution_strategy": self.execution_strategy,
+                "ruled_out": self.ruled_out,
             }
         elif role == "coder":
             view = {
@@ -615,11 +747,29 @@ class ErrorBlackboard:
                 "suspected_lines": self._verified_suspects(),
                 "next_fix": self.next_fix,
                 "latest_runtime": self._latest_runtime(),
+                "latest_failed_patch": self.latest_failed_patch_reason(),
+                "performance_constraints": {
+                    "execution_strategy": self.execution_strategy,
+                    "performance_feedback": self.performance_feedback(),
+                },
+            }
+        elif role == "router":
+            view = {
+                "task_stem": self.task_stem,
+                "error_type": self.error_type,
+                "current_diagnosis": {
+                    "line_level_bug_report": self._verified_suspects(),
+                    "next_fix": self.next_fix,
+                },
+                "latest_attempt": self.attempts[-1] if self.attempts else None,
+                "routing_decisions": self.routing_decisions[-3:],
+                "repeated_failure_alert": self.repeated_failure_alert,
+                "execution_strategy": self.execution_strategy,
             }
         else:
             return self.to_prompt_block(max_chars)
         return _truncate_text(
-            json.dumps(view, indent=2, ensure_ascii=False), max_chars
+            json.dumps(view, indent=2, ensure_ascii=False, default=str), max_chars
         )
 
 
@@ -660,13 +810,9 @@ def _tool_call_signature(name: str, args_str: str) -> str:
     return json.dumps({"tool": name, "args": args}, sort_keys=True, ensure_ascii=False)
 
 
-def _attempt_history_prompt(state: _LoopState, max_items: int = 3) -> str:
-    if not state.attempt_history:
-        return "[]"
-    return _truncate_text(
-        json.dumps(state.attempt_history[-max_items:], indent=2, ensure_ascii=False),
-        10000,
-    )
+def _attempt_history_prompt(state: _LoopState) -> str:
+    """S_T: older attempts as typed AttSum records, the latest verbatim."""
+    return attempt_memory(state.attempt_history)
 
 
 def _tried_strategies_prompt(state: _LoopState) -> str | None:
@@ -803,6 +949,18 @@ def _performance_feedback_text(perf: dict, gate: dict) -> str:
     if perf.get("error"):
         lines.append("Performance measurement error:")
         lines.append(_truncate_text(str(perf["error"]), 4000))
+    if gate.get("intended_strategy"):
+        lines.append(f"Intended execution strategy: {gate['intended_strategy']}")
+        lines.append(f"Submitted execution strategy: {gate.get('submitted_strategy')}")
+    changes = gate.get("parallel_changes") or []
+    if changes:
+        lines.append("How the patch changed the expected parallel behavior:")
+        lines.extend(f"- {c}" for c in changes)
+    elif gate.get("intended_strategy"):
+        lines.append(
+            "No coarse structural change was detected; look for slower memory "
+            "access patterns, redundant work, or extra global-memory traffic."
+        )
     return "\n".join(lines)
 
 
@@ -859,7 +1017,9 @@ def _json_role_action_request(
             "\nYou may also finish this role with a structured report:\n"
             '{"tool":"final_report","args":{'
             '"summary":"<=1 sentence","key_points":["<=4 terse evidence bullets"],'
-            '"ruled_out":["<=4 rejected hypotheses"]}}\n'
+            '"ruled_out":["<=4 rejected hypotheses"],'
+            '"execution_strategy":"intended launch geometry / cooperation / '
+            'shared memory / Tensor Core / reduction structure"}}\n'
         )
     elif allow_final_report:
         pseudo = (
@@ -895,8 +1055,10 @@ def _build_ctx_config(agent_cfg: dict) -> ContextConfig:
 
 
 def _maybe_make_summarizer(agent_cfg: dict, client, config: dict):
+    """Summarize(r, Kind(r), C_summary): LLM-backed when ``use_llm_summary``
+    is on, otherwise the deterministic type-aware summarizer."""
     if not bool(agent_cfg.get("use_llm_summary", True)):
-        return None
+        return make_rule_based_summarizer()
     return make_summarizer(
         client, config,
         max_calls=int(agent_cfg.get("max_summary_calls", 40)),

@@ -21,10 +21,15 @@ with:
   - a call budget (falls back to truncation when exhausted / on API error)
   - kind-specific prompts that tell the model what to preserve
 
+`make_rule_based_summarizer()` returns a deterministic summariser with the
+same signature and the same per-kind preservation schema, used when
+LLM summarisation is disabled (``agent.use_llm_summary: false``).
+
 Kinds:
   code          — read_code / read_test_file / read_prompt output
   diagnostic    — compute-sanitizer / cuda-gdb output
-  build_log     — build_only / test_only / write_solution feedback
+  build_log     — build_only / write_solution feedback
+  test_log      — test_only output
   investigation — a batch of tool exchanges aged out of the recent window
   attempt       — one completed iteration's tool activity (cross-iter fold)
   generic       — fallback
@@ -34,6 +39,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from typing import Callable
 
 logger = logging.getLogger("cuda_debugger_exp")
@@ -68,6 +74,12 @@ _KIND_INSTRUCTIONS = {
         "error message with its file:line, the first failing assertion, and "
         "any Expected/Got/Tolerance values. Drop warnings and repeated "
         "instantiation noise unless they are the only diagnostic."
+    ),
+    "test_log": (
+        "This is functional-test output. PRESERVE EXACTLY: every failing "
+        "assertion or check, Expected-versus-actual values (Expected/Got, "
+        "ref/out, tolerance), the failing index or shape, and any runtime "
+        "error with its file:line. Drop passing checks and progress noise."
     ),
     "investigation": (
         "This is a log of tool calls the agent already made in the CURRENT "
@@ -194,4 +206,129 @@ def make_summarizer(
     # Expose counters for logging / tests
     summarize.state = state          # type: ignore[attr-defined]
     summarize.cache = cache          # type: ignore[attr-defined]
+    return summarize
+
+
+# ---------------------------------------------------------------------------
+# Deterministic type-aware summariser
+# ---------------------------------------------------------------------------
+
+_CODE_KEEP_RE = re.compile(
+    r"__global__|__device__|__host__|<<<|>>>|#define|#include|constexpr|"
+    r"\bconst\s+\w+\s+\w+\s*=|\bstruct\b|\bclass\b|\btemplate\b|"
+    r"__shared__|__syncthreads|__syncwarp|blockIdx|blockDim|threadIdx|gridDim|"
+    r"\bdim3\b|cudaMalloc|cudaMemcpy|\bdef\s|\bTORCH_|PYBIND11"
+)
+_DIAG_KEEP_RE = re.compile(
+    r"Invalid|Hazard|Uninitialized|ERROR SUMMARY|Barrier|Race|race|"
+    r"thread \(|block \(|Address|address|at 0x|by thread|\.cu:\d+|\.cuh:\d+|"
+    r"line \d+|\bL\d+\b|severity|flag|signal|SIG[A-Z]+|error",
+)
+_LOG_KEEP_RE = re.compile(
+    r"error|Error|ERROR|assert|Assert|FAIL|Fail|fail|mismatch|Mismatch|"
+    r"expected|Expected|got|Got|actual|Actual|tolerance|Tolerance|"
+    r"max_abs|max_diff|diff|illegal|Illegal|undefined|\.cu\(\d+\)|\.cu:\d+|"
+    r"build_ok=|category=|speedup|Speedup|PERFORMANCE GATE|timeout|Timeout"
+)
+_KIND_KEEP_RE = {
+    "code": _CODE_KEEP_RE,
+    "diagnostic": _DIAG_KEEP_RE,
+    "build_log": _LOG_KEEP_RE,
+    "test_log": _LOG_KEEP_RE,
+}
+# Tool name -> summary kind for results inside investigation/attempt digests.
+_RESULT_KIND = {
+    "read_code": "code",
+    "read_test_file": "code",
+    "read_prompt": "code",
+    "run_static_analysis": "diagnostic",
+    "run_compute_sanitizer": "diagnostic",
+    "build_only": "build_log",
+    "test_only": "test_log",
+    "write_solution": "build_log",
+    "locate_bug": "generic",
+    "apply_edit": "generic",
+}
+
+
+def _keep_lines(text: str, kind: str, max_lines: int) -> list[str]:
+    pattern = _KIND_KEEP_RE.get(kind)
+    seen: set[str] = set()
+    kept: list[str] = []
+    for line in text.splitlines():
+        stripped = line.rstrip()
+        if not stripped.strip():
+            continue
+        if pattern is not None and not pattern.search(stripped):
+            continue
+        key = re.sub(r"0x[0-9a-fA-F]+", "0xADDR", stripped.strip())
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(stripped)
+        if len(kept) >= max_lines:
+            break
+    if not kept:
+        kept = [ln.rstrip() for ln in text.splitlines() if ln.strip()][: min(4, max_lines)]
+    return kept
+
+
+def _summarise_tool_log(text: str, kind: str, target_chars: int) -> str:
+    """InvSum / AttSum over a ``TOOL: name(args)\nRESULT:\n...`` log."""
+    blocks = re.split(r"(?m)^(?=TOOL: )", text)
+    inspected: list[str] = []
+    facts: list[str] = []
+    outcomes: list[str] = []
+    for block in blocks:
+        if not block.startswith("TOOL: "):
+            continue
+        head, _, result = block.partition("\nRESULT:\n")
+        call = head[len("TOOL: "):].strip()
+        name = call.split("(", 1)[0]
+        inspected.append(call[:200])
+        result_kind = _RESULT_KIND.get(name, "generic")
+        for line in _keep_lines(result, result_kind, 4):
+            facts.append(f"[{name}] {line.strip()[:200]}")
+        if "[BUILD/TEST RESULT]" in result:
+            outcomes.extend(
+                ln.strip() for ln in result.splitlines()
+                if ln.startswith("build_ok=")
+            )
+    label = "Attempt" if kind == "attempt" else "Investigation"
+    parts = [f"{label} — tool calls: " + "; ".join(inspected)]
+    if facts:
+        parts.append("Facts:\n" + "\n".join(f"- {f}" for f in facts))
+    if outcomes:
+        parts.append("Validation outcome: " + "; ".join(outcomes))
+    return _truncate("\n".join(parts), target_chars)
+
+
+def rule_based_summary(text: str, kind: str = "generic", target_chars: int = 2000) -> str:
+    """Summarize(r, Kind(r)) without an LLM.
+
+    Keeps exactly the fields the per-kind preservation schema names:
+    signatures, constants, launch expressions and line numbers for source;
+    error kinds, coordinates, addresses, locations and counts for
+    diagnostics; distinct errors, failing assertions and expected-versus-
+    actual values for build/test logs; inspected calls, concrete facts and
+    validation outcomes for investigation/attempt digests.
+    """
+    if not text:
+        return text
+    if kind in ("investigation", "attempt"):
+        body = _summarise_tool_log(text, kind, target_chars)
+    else:
+        max_lines = max(8, target_chars // 60)
+        body = _truncate("\n".join(_keep_lines(text, kind, max_lines)), target_chars)
+    return f"[ctx-compressed {kind} (typed): {len(text)}→{len(body)} chars]\n" + body
+
+
+def make_rule_based_summarizer() -> Callable[[str, str, int], str]:
+    state = {"calls": 0, "cache_hits": 0, "fallbacks": 0}
+
+    def summarize(text: str, kind: str = "generic", target_chars: int = 2000) -> str:
+        state["calls"] += 1
+        return rule_based_summary(text, kind, target_chars)
+
+    summarize.state = state          # type: ignore[attr-defined]
     return summarize

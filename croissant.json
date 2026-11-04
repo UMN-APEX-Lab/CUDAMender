@@ -45,8 +45,8 @@
     "transform": "cr:transform"
   },
   "@type": "sc:Dataset",
-  "name": "CuDebugger 169-task paper artifact subset",
-  "description": "CuDebugger artifact subset containing the 169 CUDA debugging tasks used in the paper experiments: 92 compile_error, 45 logic_error, and 32 memory_crash instances. The full CUDABeaver dataset is available through the included CUDABeaver git submodule.",
+  "name": "CuDebugger 151-task paper artifact subset",
+  "description": "CuDebugger artifact subset containing the 151 CUDA debugging tasks used in the paper experiments: 74 compile_error, 45 logic_error, and 32 memory_crash instances. The full CUDABeaver dataset is available through the included CUDABeaver git submodule.",
   "license": "https://creativecommons.org/licenses/by/4.0/",
   "url": "https://anonymous.4open.science/r/CUDADebugBench-F33E/",
   "version": "1.0.0",
@@ -74,7 +74,7 @@
       "@type": "cr:RecordSet",
       "@id": "instances",
       "name": "instances",
-      "description": "169 paper-subset broken-kernel instances.",
+      "description": "151 paper-subset broken-kernel instances.",
       "field": [
         {
           "@type": "cr:Field",

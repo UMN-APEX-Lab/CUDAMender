@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 1250,
+  "broken_start_hash": "6ceebbffc1d22221"
+}

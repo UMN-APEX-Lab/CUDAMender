@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 824,
+  "broken_start_hash": "060adb5164020220"
+}

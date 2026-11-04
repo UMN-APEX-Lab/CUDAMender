@@ -56,7 +56,7 @@ _TOOL_SUMMARY_KIND = {
     "run_static_analysis": "diagnostic",
     "run_compute_sanitizer": "diagnostic",
     "build_only": "build_log",
-    "test_only": "build_log",
+    "test_only": "test_log",
     "write_solution": "build_log",
 }
 
@@ -600,8 +600,31 @@ def manage_context(
     return stats
 
 
-def get_budget_nudge(status: str | None, in_locate_phase: bool = False) -> str | None:
-    """Return a system-message nudge string for the budget-warning state."""
+def get_budget_nudge(
+    status: str | None,
+    in_locate_phase: bool = False,
+    role: str | None = None,
+) -> str | None:
+    """Return a system-message nudge string for the budget-warning state.
+
+    At the force threshold the next prompt requests an immediate
+    localization (diagnosis roles, or a LOCATE phase) or an immediate patch
+    submission.
+    """
+    if role in ("analyzer", "executor"):
+        if status == "warn":
+            return (
+                "\n\n[Context budget is at ≥80%. Wrap up your investigation "
+                "soon: record your best-supported localization and finish "
+                "with a report.]"
+            )
+        if status == "force":
+            return (
+                "\n\n[Context budget is at ≥95%. Call `locate_bug` on the "
+                "best-supported line now, then finish with `final_report` — "
+                "further investigation is not affordable.]"
+            )
+        return None
     if status == "warn":
         return (
             "\n\n[Context budget is at ≥80%. Wrap up your investigation soon "

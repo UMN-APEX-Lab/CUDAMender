@@ -11,7 +11,6 @@ from .cudeubgger import deps as _deps
 from .cudeubgger import prompts as _prompts
 from .cudeubgger.blackboard import (
     run_task_blackboard_agent as _run_task_blackboard_agent,
-    run_task_multi_role_no_blackboard_agent as _run_task_multi_role_no_blackboard_agent,
 )
 from .cudeubgger.common import *  # re-export legacy private helpers used by tests/tools
 from .cudeubgger.react import run_task_agent as _run_task_agent
@@ -69,11 +68,6 @@ def _sync_legacy_dependency_aliases() -> None:
 def run_task_blackboard_agent(*args, **kwargs):
     _sync_legacy_dependency_aliases()
     return _run_task_blackboard_agent(*args, **kwargs)
-
-
-def run_task_multi_role_no_blackboard_agent(*args, **kwargs):
-    _sync_legacy_dependency_aliases()
-    return _run_task_multi_role_no_blackboard_agent(*args, **kwargs)
 
 
 def run_task_agent(*args, **kwargs):

@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 1053,
+  "broken_start_hash": "b9f4634a14a65e90"
+}

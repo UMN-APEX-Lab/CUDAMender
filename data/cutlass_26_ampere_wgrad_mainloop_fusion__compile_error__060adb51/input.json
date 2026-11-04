@@ -1,0 +1,19 @@
+{
+  "task_id": "cutlass_26_ampere_wgrad_mainloop_fusion",
+  "schema_version": 2,
+  "difficulty": "unknown",
+  "level": "cutlass_class",
+  "tags": [],
+  "build_command": "make test CUTLASS_DIR=./reference_sources/cutlass TK_DIR=./reference_sources/ThunderKittens",
+  "test_command": "./test",
+  "hardware": {
+    "min_sm": 80,
+    "tested_sms": [
+      80
+    ],
+    "required_features": []
+  },
+  "solution_file": "solution.h",
+  "required_arch": null,
+  "arch_specific": false
+}

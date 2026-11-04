@@ -60,7 +60,7 @@ DEFAULT_QUOTAS = {
     "run_compute_sanitizer": 10,
     "build_only": 6,
     "test_only": 6,
-    "locate_bug": None,       # mandatory step — never quota-blocked
+    "locate_bug": 40,         # localization records; generous, still bounded
     "apply_edit": None,       # surgical edits — unlimited within a fix
     "write_solution": None,   # bounded by iteration limit, not call count
 }
@@ -508,9 +508,10 @@ TOOL_SCHEMAS: list[dict] = [
                 "budget. In full-file submission mode, pass a complete "
                 "revised `code` file to replace the current candidate and "
                 "submit it in one step. Legacy patch-submit mode may omit "
-                "`code` to commit staged `apply_edit` changes. Must be preceded by "
-                "`locate_bug` in this iteration; an un-located submission is "
-                "rejected."
+                "`code` to commit staged `apply_edit` changes. Must be tied to a "
+                "localization record (a `locate_bug` call or the verified "
+                "blackboard localization) in this iteration; an un-located "
+                "submission is rejected."
             ),
             "parameters": {
                 "type": "object",
@@ -518,6 +519,15 @@ TOOL_SCHEMAS: list[dict] = [
                     "rationale": {
                         "type": "string",
                         "description": "Short reason for this submission (recorded in trace).",
+                    },
+                    "patch_intent": {
+                        "type": "string",
+                        "description": (
+                            "What the patch changes, which localized bug it "
+                            "addresses, and which CUDA execution strategy "
+                            "(launch geometry, shared memory, Tensor Core, "
+                            "reduction structure) it preserves."
+                        ),
                     },
                     "code": {
                         "type": "string",
@@ -1085,6 +1095,7 @@ def _tool_write_solution(args: dict, env: ToolEnv) -> ToolResult:
     model can recover from).
     """
     rationale = args.get("rationale", "")
+    patch_intent = args.get("patch_intent", "")
     code = args.get("code")
     full_replacement = False
     if code is not None:
@@ -1114,6 +1125,7 @@ def _tool_write_solution(args: dict, env: ToolEnv) -> ToolResult:
         meta={
             "submit": True,
             "rationale": rationale[:500],
+            "patch_intent": str(patch_intent or "")[:500],
             "full_replacement": full_replacement,
         },
     )
@@ -1246,7 +1258,7 @@ def schemas_for_config(
                 "classification. The `code` argument is required and must be "
                 "the full replacement file, not a diff or snippet. Counts as "
                 "ONE iteration against the per-task iteration budget. Must be "
-                "preceded by `locate_bug` in this iteration."
+                "tied to a localization record in this iteration."
             )
             props = params.setdefault("properties", {})
             if "code" in props:

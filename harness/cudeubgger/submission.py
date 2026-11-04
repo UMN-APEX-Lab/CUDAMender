@@ -17,6 +17,7 @@ from .common import (
     _solution_artifact_suffix,
     _truncate_text,
 )
+from .memory import describe_strategy, parallel_structure_diff
 from .prompts import BUILD_TEST_FEEDBACK_TEMPLATE
 from .records import _make_iter_record, _persist_iter_artifacts
 
@@ -94,6 +95,7 @@ def _handle_submission(
             config,
             dataset_dir,
             classification,
+            baseline_code=state.broken_code,
         )
 
     sanitizer_summary = _maybe_run_sanitizers(
@@ -123,6 +125,7 @@ def _handle_submission(
         code_hash,
         result.meta.get("rationale", ""),
         submitted_location,
+        result.meta.get("patch_intent", ""),
         classification,
         build_output,
         test_output,
@@ -181,7 +184,15 @@ def _evaluate_performance_gate(
     config: dict,
     dataset_dir: Path,
     classification: dict,
+    baseline_code: str = "",
 ) -> tuple[dict | None, dict | None, dict, str | None]:
+    """Measure a functionally passing candidate against the performance gate.
+
+    A gate failure becomes a failed repair whose feedback is debugging
+    evidence: alongside the timing numbers it reports how the submitted
+    patch changed the parallel structure of the starting candidate
+    (``baseline_code``), which encodes the intended GPU strategy.
+    """
     solution_file = input_meta.get("solution_file", "solution.cu")
     perf = deps.measure_iter_perf(
         input_meta.get("task_id", task_stem),
@@ -207,6 +218,12 @@ def _evaluate_performance_gate(
                 f"(gate reason={perf_gate.get('reason')})"
             )
     if not perf_gate.get("passed", True):
+        if baseline_code:
+            perf_gate["intended_strategy"] = describe_strategy(baseline_code)
+            perf_gate["submitted_strategy"] = describe_strategy(new_code)
+            perf_gate["parallel_changes"] = parallel_structure_diff(
+                baseline_code, new_code
+            )
         perf_feedback = _performance_feedback_text(perf, perf_gate)
         classification = {
             "category": "perf_below_threshold",
@@ -251,6 +268,7 @@ def _record_submission(
     code_hash: str,
     rationale: str,
     submitted_location,
+    patch_intent: str,
     classification: dict,
     build_output: str,
     test_output: str | None,
@@ -283,6 +301,7 @@ def _record_submission(
     state.attempt_history.append({
         "iteration": iteration,
         "rationale": rationale,
+        "patch_intent": patch_intent,
         "located": submitted_location,
         # The verifier's single fix direction for this attempt (gap 6).
         "fix_direction": state.current_fix_direction,
@@ -292,6 +311,7 @@ def _record_submission(
         "test_output_excerpt": _truncate_text(test_output, 2000),
         "performance": perf,
         "performance_gate": perf_gate,
+        "parallel_changes": (perf_gate or {}).get("parallel_changes") or [],
     })
 
     state.located_this_iteration = False

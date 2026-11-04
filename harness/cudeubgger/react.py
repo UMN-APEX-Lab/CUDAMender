@@ -10,7 +10,6 @@ from pathlib import Path
 from ..agent_tools import schemas_for_config
 from .blackboard import (
     run_task_blackboard_agent,
-    run_task_multi_role_no_blackboard_agent,
 )
 from .common import (
     _LoopState,
@@ -31,7 +30,11 @@ from .common import (
     _tool_names,
     _tools_for_phase,
 )
-from .prompts import AGENT_SYSTEM_PROMPT, JSON_ACTION_PROTOCOL_PROMPT
+from .prompts import (
+    AGENT_SYSTEM_PROMPT,
+    JSON_ACTION_PROTOCOL_PROMPT,
+    with_performance_target,
+)
 from .runtime import (
     _append_assistant_message,
     _build_tool_env,
@@ -70,17 +73,6 @@ def run_task_agent(
             task_stem, dataset_dir, output_dir, config, client,
             broken_start=broken_start,
         )
-    if workflow in {
-        "multi_role_no_blackboard",
-        "multi-role-no-blackboard",
-        "no_blackboard",
-        "no-blackboard",
-    }:
-        return run_task_multi_role_no_blackboard_agent(
-            task_stem, dataset_dir, output_dir, config, client,
-            broken_start=broken_start,
-        )
-
     if not broken_start:
         raise ValueError(
             "run_task_agent requires `broken_start` — the agent loop is "
@@ -109,10 +101,11 @@ def run_task_agent(
     tool_decision_max_tokens, tool_decision_temperature = (
         _tool_decision_overrides(agent_cfg)
     )
-    base_system = (
+    base_system = with_performance_target(
         AGENT_SYSTEM_PROMPT + "\n\n" + JSON_ACTION_PROTOCOL_PROMPT
         if use_json_action
-        else AGENT_SYSTEM_PROMPT
+        else AGENT_SYSTEM_PROMPT,
+        config,
     )
 
     state = _LoopState()

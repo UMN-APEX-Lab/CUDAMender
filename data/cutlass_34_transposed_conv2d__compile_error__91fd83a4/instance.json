@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_34_transposed_conv2d__compile_error__91fd83a4",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 737,
+  "broken_start_hash": "91fd83a463ae77dd"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cutlass_41_fused_multi_head_attention__compile_error__8608d88b",
+  "task_family": "cutlass",
+  "error_category": "compile_error",
+  "difficulty": "medium",
+  "upstream_library": "CUTLASS v3.5",
+  "broken_start_provenance": "LLM-generated, anonymous frontier model",
+  "files": {
+    "broken_start": "broken_start.h",
+    "reference": "reference.cu",
+    "prompt": "prompt.txt",
+    "testbench": "testbench/",
+    "input_meta": "input.json"
+  },
+  "broken_start_lines": 1050,
+  "broken_start_hash": "8608d88b701babcc"
+}

@@ -368,6 +368,16 @@ def _patch_turn(old, new, locate_line=1, rationale=""):
     ])
 
 
+def _bb_patch_turn(old, new, rationale=""):
+    """One blackboard Coder turn: apply_edit + write_solution(), tied to the
+    verified localization already on the board."""
+    args = {"rationale": rationale} if rationale else {}
+    return _resp(tool_calls=[
+        _tc("apply_edit", {"old_string": old, "new_string": new}),
+        _tc("write_solution", args),
+    ])
+
+
 def test_agent_iterates_on_failure(stubbed_loop):
     """Iter 1 patch fails; iter 2 patches again and passes."""
     responses = [
@@ -664,14 +674,16 @@ def test_blackboard_workflow_runs_agents_then_coder(stubbed_loop):
             }],
             "fix_suggestions": ["guard i before writing out[i]"],
         })),
-        # Coder: confirm line, patch, submit.
+        # Coder: the verified localization unlocks repair; patch, submit.
         _resp(tool_calls=[
-            _locate(3),
             _tc("apply_edit", {
                 "old_string": "  out[i] = 1.0f;",
                 "new_string": "  if (i < 1) out[i] = 1.0f;",
             }),
-            _tc("write_solution", {"rationale": "guard global write"}),
+            _tc("write_solution", {
+                "rationale": "guard global write",
+                "patch_intent": "bounds-guard the write; keep 1D grid launch",
+            }),
         ]),
     ]
     client = MockClient(responses)
@@ -700,94 +712,26 @@ def test_blackboard_workflow_runs_agents_then_coder(stubbed_loop):
     assert any(s["source"] == "analyzer" and s["line"] == 3 for s in board["suspected_lines"])
     assert any(s["source"] == "verifier" and s["line"] == 3 for s in board["suspected_lines"])
     assert board["static_flags"]
+    # The submission is tied to the verifier's localization record.
+    assert records[0]["located"]["line"] == 3
+    assert records[0]["located"]["source"] == "verifier"
+    assert board["attempts"][0]["validation_outcome"] == "passed"
+    assert board["attempts"][0]["patch_intent"].startswith("bounds-guard")
     trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
     tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
     assert tools == [
         "run_static_analysis",
         "locate_bug",
-        "locate_bug",
         "apply_edit",
         "write_solution",
     ]
-
-
-def test_multi_role_no_blackboard_workflow_runs_without_shared_board(stubbed_loop):
-    """No-blackboard ablation keeps the roles but only passes compact reports."""
-    stubbed_loop["config"]["agent"]["workflow"] = "multi_role_no_blackboard"
-    Path(stubbed_loop["broken_start"]["code_path"]).write_text(
-        "extern \"C\" __global__ void k(float* out) {\n"
-        "  int i = blockIdx.x * blockDim.x + threadIdx.x;\n"
-        "  out[i] = 1.0f;\n"
-        "}\n"
-    )
-    responses = [
-        _resp(tool_calls=[
-            _tc("run_static_analysis", {}),
-            _tc("locate_bug", {
-                "file": "solution.cu",
-                "line": 3,
-                "bug_description": "unchecked global write index",
-                "evidence": "static analysis flagged memory write",
-            }),
-        ]),
-        _resp(content="static report: line 3 lacks a bounds guard"),
-        _resp(content="runtime report: test reports wrong result"),
-        _resp(content=json.dumps({
-            "error_type": "illegal_memory_access",
-            "line_level_bug_report": [{
-                "file": "solution.cu",
-                "line": 3,
-                "confidence": "high",
-                "root_cause": "unchecked write can go out of bounds",
-                "evidence": ["static flag", "runtime failure"],
-            }],
-            "fix_suggestions": ["guard i before writing out[i]"],
-        })),
-        _resp(tool_calls=[
-            _locate(3),
-            _tc("apply_edit", {
-                "old_string": "  out[i] = 1.0f;",
-                "new_string": "  if (i < 1) out[i] = 1.0f;",
-            }),
-            _tc("write_solution", {"rationale": "guard global write"}),
-        ]),
+    # Coder is offered repair tools, not the diagnosis-only locate_bug.
+    coder_tools = [
+        tool["function"]["name"]
+        for tool in client.chat.completions.calls[-1].get("tools", [])
     ]
-    client = MockClient(responses)
-    # Runtime observation before executor.
-    stubbed_loop["compile_results"].append((True, "ok"))
-    stubbed_loop["test_results"].append((1, "illegal memory access"))
-    # Coder submission.
-    stubbed_loop["compile_results"].append((True, "ok"))
-    stubbed_loop["test_results"].append((0, "all checks passed"))
-
-    from harness.agent_loop import run_task_agent
-    records, stop = run_task_agent(
-        task_stem="CUDA_42",
-        dataset_dir=stubbed_loop["dataset"],
-        output_dir=stubbed_loop["output_dir"],
-        config=stubbed_loop["config"],
-        client=client,
-        broken_start=stubbed_loop["broken_start"],
-    )
-
-    assert stop == "passed"
-    assert len(records) == 1
-    assert records[0]["agent_workflow"] == "multi_role_no_blackboard"
-    assert "error_blackboard" not in records[0]
-    role_reports = records[0]["role_reports"]
-    assert role_reports["error_type"] == "illegal_memory_access"
-    assert role_reports["analyzer_report"] == "static report: line 3 lacks a bounds guard"
-    assert role_reports["executor_report"] == "runtime report: test reports wrong result"
-    assert role_reports["next_fix"] == "guard i before writing out[i]"
-    trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
-    tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
-    assert tools == [
-        "run_static_analysis",
-        "locate_bug",
-        "locate_bug",
-        "apply_edit",
-        "write_solution",
-    ]
+    assert "locate_bug" not in coder_tools
+    assert {"apply_edit", "write_solution", "build_only", "read_code"} <= set(coder_tools)
 
 
 def test_blackboard_submit_guard_writes_after_apply_edit(stubbed_loop):
@@ -813,9 +757,8 @@ def test_blackboard_submit_guard_writes_after_apply_edit(stubbed_loop):
             }],
             "fix_suggestions": ["replace seed with fixed code"],
         })),
-        # Coder patches but forgets to call write_solution.
+        # Coder patches but forgets to call write_solution on its last turn.
         _resp(tool_calls=[
-            _locate(1),
             _tc("apply_edit", {
                 "old_string": "seed_broken_v0",
                 "new_string": "fixed_v1",
@@ -845,11 +788,11 @@ def test_blackboard_submit_guard_writes_after_apply_edit(stubbed_loop):
     assert records[0]["status"] == "passed"
     trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
     tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
-    assert tools == ["locate_bug", "apply_edit", "write_solution"]
+    assert tools == ["apply_edit", "write_solution"]
 
 
-def test_blackboard_coder_must_apply_edit_after_locate(stubbed_loop):
-    """After coder locates a bug, the next blackboard coder turn only offers apply_edit."""
+def test_blackboard_coder_last_turn_forces_submission(stubbed_loop):
+    """The coder may inspect or build first; its last turn only offers submission tools."""
     stubbed_loop["config"]["agent"]["workflow"] = "blackboard"
     stubbed_loop["config"]["agent"]["blackboard"] = {
         "max_role_turns": 1,
@@ -871,9 +814,9 @@ def test_blackboard_coder_must_apply_edit_after_locate(stubbed_loop):
             }],
             "fix_suggestions": ["replace seed with fixed code"],
         })),
-        # First coder turn locates only.
-        _resp(tool_calls=[_locate(1)]),
-        # The next coder turn should be forced to patch.
+        # First coder turn checks the build only.
+        _resp(tool_calls=[_tc("build_only", {})]),
+        # The last coder turn is restricted to submission tools.
         _resp(tool_calls=[
             _tc("apply_edit", {
                 "old_string": "seed_broken_v0",
@@ -884,6 +827,7 @@ def test_blackboard_coder_must_apply_edit_after_locate(stubbed_loop):
     client = MockClient(responses)
     stubbed_loop["compile_results"].append((True, "ok"))
     stubbed_loop["test_results"].append((1, "wrong result"))
+    stubbed_loop["compile_results"].append((True, "ok"))   # build_only
     stubbed_loop["compile_results"].append((True, "ok"))
     stubbed_loop["test_results"].append((0, "all checks passed"))
 
@@ -904,10 +848,11 @@ def test_blackboard_coder_must_apply_edit_after_locate(stubbed_loop):
         for call in client.chat.completions.calls
         if call.get("tools") is not None
     ]
-    assert tool_name_sets[-1] == ["apply_edit"]
+    assert "build_only" in tool_name_sets[-2]
+    assert tool_name_sets[-1] == ["apply_edit", "write_solution"]
     trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
     tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
-    assert tools == ["locate_bug", "apply_edit", "write_solution"]
+    assert tools == ["build_only", "apply_edit", "write_solution"]
 
 
 def test_blackboard_coder_no_submission_recovers_next_round(stubbed_loop):
@@ -935,7 +880,6 @@ def test_blackboard_coder_no_submission_recovers_next_round(stubbed_loop):
         _resp(content="static report 1"),
         _resp(content="runtime report 1"),
         _resp(content=json.dumps(verifier_report)),
-        _resp(tool_calls=[_locate(1)]),
         _resp(tool_calls=[
             _tc("apply_edit", {
                 "old_string": "not_in_current_code",
@@ -943,15 +887,16 @@ def test_blackboard_coder_no_submission_recovers_next_round(stubbed_loop):
             }),
         ]),
         _resp(tool_calls=[_tc("read_code", {"full_file": True})]),
+        _resp(tool_calls=[_tc("read_code", {"full_file": True})]),
         _resp(content="static report 2 sees failed edit"),
         _resp(content="runtime report 2 still wrong"),
         _resp(content=json.dumps(verifier_report)),
         _resp(tool_calls=[
-            _locate(1),
             _tc("apply_edit", {
                 "old_string": "seed_broken_v0",
                 "new_string": "fixed_v1",
             }),
+            _tc("write_solution", {}),
         ]),
     ]
     client = MockClient(responses)
@@ -983,10 +928,9 @@ def test_blackboard_coder_no_submission_recovers_next_round(stubbed_loop):
     trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
     tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
     assert tools == [
-        "locate_bug",
         "apply_edit",
         "read_code",
-        "locate_bug",
+        "read_code",
         "apply_edit",
         "write_solution",
     ]
@@ -1019,20 +963,15 @@ def test_blackboard_json_action_protocol_runs_deterministic_tools(stubbed_loop):
             "fix_suggestions": ["replace seed with fixed code"],
         })),
         _resp(content=json.dumps({
-            "tool": "locate_bug",
-            "args": {
-                "file": "solution.cu",
-                "line": 1,
-                "bug_description": "seed code is wrong",
-                "evidence": "verified report",
-            },
-        })),
-        _resp(content=json.dumps({
             "tool": "apply_edit",
             "args": {
                 "old_string": "seed_broken_v0",
                 "new_string": "fixed_v1",
             },
+        })),
+        _resp(content=json.dumps({
+            "tool": "write_solution",
+            "args": {"patch_intent": "replace seed; keep launch"},
         })),
     ]
     client = MockClient(responses)
@@ -1057,7 +996,120 @@ def test_blackboard_json_action_protocol_runs_deterministic_tools(stubbed_loop):
     assert client.chat.completions.calls[0]["response_format"] == {"type": "json_object"}
     trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
     tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
-    assert tools == ["run_static_analysis", "locate_bug", "apply_edit", "write_solution"]
+    assert tools == ["run_static_analysis", "apply_edit", "write_solution"]
+    # Structured reports are on by default; free-text args degrade to a summary.
+    board = records[0]["error_blackboard"]
+    assert board["analyzer_report"]["summary"] == "static report"
+
+
+def test_blackboard_full_file_mode_accepts_staged_edits(stubbed_loop):
+    """Production setting (full-file + JSON actions): the coder may stage
+    apply_edit changes and submit the edited complete file; a code-less
+    submission without staged edits is still rejected."""
+    stubbed_loop["config"]["agent"].update({
+        "workflow": "blackboard",
+        "action_protocol": "json",
+        "full_file_submissions": True,
+        "blackboard": {"max_role_turns": 1, "max_coder_turns": 3},
+    })
+    Path(stubbed_loop["broken_start"]["code_path"]).write_text("seed_broken_v0\n")
+    responses = [
+        _resp(content='{"tool":"final_report","args":{"summary":"static"}}'),
+        _resp(content='{"tool":"final_report","args":{"summary":"runtime"}}'),
+        _resp(content=json.dumps({
+            "error_type": "logic_error",
+            "line_level_bug_report": [{"file": "solution.cu", "line": 1, "root_cause": "wrong"}],
+            "next_fix": "replace the seed",
+            "performance_constraints": "keep the single-kernel launch",
+        })),
+        # Code-less submission before any staged edit -> rejected.
+        _resp(content='{"tool":"write_solution","args":{}}'),
+        _resp(content=json.dumps({
+            "tool": "apply_edit",
+            "args": {"old_string": "seed_broken_v0", "new_string": "fixed_v1"},
+        })),
+        _resp(content='{"tool":"write_solution","args":{"patch_intent":"replace seed"}}'),
+    ]
+    client = MockClient(responses)
+    stubbed_loop["compile_results"].append((True, "ok"))
+    stubbed_loop["test_results"].append((1, "wrong result"))
+    stubbed_loop["compile_results"].append((True, "ok"))
+    stubbed_loop["test_results"].append((0, "all checks passed"))
+
+    from harness.agent_loop import run_task_agent
+    records, stop = run_task_agent(
+        task_stem="CUDA_42",
+        dataset_dir=stubbed_loop["dataset"],
+        output_dir=stubbed_loop["output_dir"],
+        config=stubbed_loop["config"],
+        client=client,
+        broken_start=stubbed_loop["broken_start"],
+    )
+
+    assert stop == "passed"
+    assert len(records) == 1
+    board = records[0]["error_blackboard"]
+    assert board["execution_strategy"] == "keep the single-kernel launch"
+    assert board["attempts"][0]["patch_intent"] == "replace seed"
+    trace = stubbed_loop["output_dir"] / "tool_trace" / "CUDA_42.jsonl"
+    tools = [json.loads(line)["tool"] for line in trace.read_text().strip().splitlines()]
+    # The code-less submission was rejected at dispatch, before build/test.
+    assert tools == ["apply_edit", "write_solution"]
+    assert any(
+        "requires full-file code submissions" in m["content"]
+        for m in client.chat.completions.calls[-1]["messages"]
+        if m["role"] == "user"
+    )
+
+
+def test_blackboard_roles_run_context_management(stubbed_loop):
+    """Role agents compact their transcripts and get the budget nudge."""
+    stubbed_loop["config"]["agent"].update({
+        "workflow": "blackboard",
+        "action_protocol": "json",
+        "token_budget": 10,          # every prompt is over the force ratio
+        "blackboard": {"max_role_turns": 2, "max_coder_turns": 1},
+    })
+    Path(stubbed_loop["broken_start"]["code_path"]).write_text("seed_broken_v0\n")
+    responses = [
+        _resp(content='{"tool":"read_code","args":{}}'),
+        _resp(content='{"tool":"final_report","args":{"summary":"static"}}'),
+        _resp(content='{"tool":"final_report","args":{"summary":"runtime"}}'),
+        _resp(content=json.dumps({
+            "error_type": "logic_error",
+            "line_level_bug_report": [{"file": "solution.cu", "line": 1, "root_cause": "wrong"}],
+            "next_fix": "replace the seed",
+        })),
+        _resp(content=json.dumps({
+            "tool": "write_solution",
+            "args": {"code": "fixed_v1\n", "patch_intent": "replace seed"},
+        })),
+    ]
+    client = MockClient(responses)
+    stubbed_loop["compile_results"].append((True, "ok"))
+    stubbed_loop["test_results"].append((1, "wrong result"))
+    stubbed_loop["compile_results"].append((True, "ok"))
+    stubbed_loop["test_results"].append((0, "all checks passed"))
+
+    from harness.agent_loop import run_task_agent
+    records, stop = run_task_agent(
+        task_stem="CUDA_42",
+        dataset_dir=stubbed_loop["dataset"],
+        output_dir=stubbed_loop["output_dir"],
+        config=stubbed_loop["config"],
+        client=client,
+        broken_start=stubbed_loop["broken_start"],
+    )
+
+    assert stop == "passed"
+    calls = client.chat.completions.calls
+    analyzer_system = calls[0]["messages"][0]["content"]
+    assert "Call `locate_bug` on the best-supported line now" in analyzer_system
+    coder_system = calls[-1]["messages"][0]["content"]
+    assert "You MUST call `write_solution`" in coder_system
+    analyzer_user = calls[0]["messages"][1]["content"]
+    assert "## Blackboard View (analyzer)" in analyzer_user
+    assert "## CUDA Evidence Anchors" in analyzer_user
 
 
 def test_blackboard_perf_gate_failure_relocalizes_and_retries(stubbed_loop, monkeypatch):
@@ -1080,7 +1132,7 @@ def test_blackboard_perf_gate_failure_relocalizes_and_retries(stubbed_loop, monk
             "line_level_bug_report": [{"file": "solution.cu", "line": 1, "root_cause": "wrong"}],
             "fix_suggestions": ["make it correct"],
         })),
-        _patch_turn("seed_broken_v0", "fixed_slow", rationale="correct but slow"),
+        _bb_patch_turn("seed_broken_v0", "fixed_slow", rationale="correct but slow"),
         # Router decision after the failed (perf-gate) submission -> reanalyze.
         _resp(content=json.dumps({
             "next_action": "reanalyze",
@@ -1094,7 +1146,7 @@ def test_blackboard_perf_gate_failure_relocalizes_and_retries(stubbed_loop, monk
             "line_level_bug_report": [{"file": "solution.cu", "line": 1, "root_cause": "slow fix"}],
             "fix_suggestions": ["preserve correctness with faster code"],
         })),
-        _patch_turn("fixed_slow", "fixed_fast", rationale="faster fix"),
+        _bb_patch_turn("fixed_slow", "fixed_fast", rationale="faster fix"),
     ]
     client = MockClient(responses)
     perf_results = [
@@ -1137,6 +1189,18 @@ def test_blackboard_perf_gate_failure_relocalizes_and_retries(stubbed_loop, monk
         for m in call["messages"]
         if m["role"] == "user"
     )
+    # The board persists across the re-analysis: round-1 diagnosis is
+    # archived, and attempt + routing records accumulate.
+    board = records[1]["error_blackboard"]
+    assert any(s.get("root_cause") == "wrong" for s in board["prior_suspected_lines"])
+    assert board["previous_diagnoses"][0]["fix_suggestions"] == ["make it correct"]
+    assert board["attempts"][0]["validation_outcome"] == "perf_below_threshold"
+    assert board["attempts"][0]["routing_decision"]["next_action"] == "reanalyze"
+    assert board["routing_decisions"][0]["diagnosis"] == "wrong_strategy"
+    # Router sees the attempt history and its own blackboard view.
+    router_prompt = client.chat.completions.calls[4]["messages"][1]["content"]
+    assert "Blackboard View (router)" in router_prompt
+    assert "Previous Failed Attempts" in router_prompt
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 {
-  "_doc": "Legacy-format task list for the 169-task paper subset (92 compile_error + 45 logic_error + 32 memory_crash). It contains runnable aliases for compatibility; n_tasks is the unique instance count.",
+  "_doc": "Legacy-format task list for the 151-task paper subset (74 compile_error + 45 logic_error + 32 memory_crash). It contains runnable aliases for compatibility; n_tasks is the unique instance count.",
   "schema_version": "task_list/1.0",
-  "n_total": 169,
+  "n_total": 151,
   "entries": [
     {
       "task_id": "cublas_applications_154",
@@ -37,42 +37,6 @@
         "error_category": "compile_error",
         "lines": 102,
         "code_hash": "8996b0991275c900"
-      }
-    },
-    {
-      "task_id": "cublas_level1_10",
-      "stem": "cublas_level1_10",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cublas_level1_10__compile_error__d6b7227b/input.json",
-        "prompts": "data/cublas_level1_10__compile_error__d6b7227b/prompt.txt",
-        "testbench": "data/cublas_level1_10__compile_error__d6b7227b/testbench",
-        "references": "data/cublas_level1_10__compile_error__d6b7227b/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cublas_level1_10__compile_error__d6b7227b/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 61,
-        "code_hash": "d6b7227b8d7efccc"
-      }
-    },
-    {
-      "task_id": "cuda_104",
-      "stem": "cuda_104",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cuda_104__compile_error__f8160fc8/input.json",
-        "prompts": "data/cuda_104__compile_error__f8160fc8/prompt.txt",
-        "testbench": "data/cuda_104__compile_error__f8160fc8/testbench",
-        "references": "data/cuda_104__compile_error__f8160fc8/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cuda_104__compile_error__f8160fc8/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 29,
-        "code_hash": "f8160fc8b8e813fd"
       }
     },
     {
@@ -181,24 +145,6 @@
         "error_category": "compile_error",
         "lines": 76,
         "code_hash": "a7b4a675337c53dd"
-      }
-    },
-    {
-      "task_id": "cuda_137",
-      "stem": "cuda_137",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cuda_137__compile_error__df17e5f1/input.json",
-        "prompts": "data/cuda_137__compile_error__df17e5f1/prompt.txt",
-        "testbench": "data/cuda_137__compile_error__df17e5f1/testbench",
-        "references": "data/cuda_137__compile_error__df17e5f1/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cuda_137__compile_error__df17e5f1/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 107,
-        "code_hash": "df17e5f1b971138f"
       }
     },
     {
@@ -688,24 +634,6 @@
       }
     },
     {
-      "task_id": "cuda_22",
-      "stem": "cuda_22",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cuda_22__compile_error__4d18e637/input.json",
-        "prompts": "data/cuda_22__compile_error__4d18e637/prompt.txt",
-        "testbench": "data/cuda_22__compile_error__4d18e637/testbench",
-        "references": "data/cuda_22__compile_error__4d18e637/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cuda_22__compile_error__4d18e637/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 35,
-        "code_hash": "4d18e637392d52a8"
-      }
-    },
-    {
       "task_id": "cuda_230",
       "stem": "cuda_230",
       "source": "anonymous_curated",
@@ -778,24 +706,6 @@
       }
     },
     {
-      "task_id": "cuda_70",
-      "stem": "cuda_70",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cuda_70__compile_error__701905b0/input.json",
-        "prompts": "data/cuda_70__compile_error__701905b0/prompt.txt",
-        "testbench": "data/cuda_70__compile_error__701905b0/testbench",
-        "references": "data/cuda_70__compile_error__701905b0/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cuda_70__compile_error__701905b0/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 20,
-        "code_hash": "701905b0b31d8da8"
-      }
-    },
-    {
       "task_id": "cuda_87",
       "stem": "cuda_87",
       "source": "anonymous_curated",
@@ -814,24 +724,6 @@
       }
     },
     {
-      "task_id": "cuda_89",
-      "stem": "cuda_89",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cuda_89__compile_error__3c452655/input.json",
-        "prompts": "data/cuda_89__compile_error__3c452655/prompt.txt",
-        "testbench": "data/cuda_89__compile_error__3c452655/testbench",
-        "references": "data/cuda_89__compile_error__3c452655/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cuda_89__compile_error__3c452655/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 40,
-        "code_hash": "3c452655e5ddd78f"
-      }
-    },
-    {
       "task_id": "cuda_8",
       "stem": "cuda_8",
       "source": "anonymous_curated",
@@ -847,24 +739,6 @@
         "error_category": "compile_error",
         "lines": 110,
         "code_hash": "93ac06fc3aeeb35d"
-      }
-    },
-    {
-      "task_id": "cufft_1",
-      "stem": "cufft_1",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cufft_1__compile_error__611168ad/input.json",
-        "prompts": "data/cufft_1__compile_error__611168ad/prompt.txt",
-        "testbench": "data/cufft_1__compile_error__611168ad/testbench",
-        "references": "data/cufft_1__compile_error__611168ad/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cufft_1__compile_error__611168ad/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 99,
-        "code_hash": "611168adc89103b8"
       }
     },
     {
@@ -940,21 +814,21 @@
       }
     },
     {
-      "task_id": "cusolver_19",
-      "stem": "cusolver_19",
+      "task_id": "cusolver_22",
+      "stem": "cusolver_22",
       "source": "anonymous_curated",
       "dataset_paths": {
-        "input": "data/cusolver_19__compile_error__812bccf2/input.json",
-        "prompts": "data/cusolver_19__compile_error__812bccf2/prompt.txt",
-        "testbench": "data/cusolver_19__compile_error__812bccf2/testbench",
-        "references": "data/cusolver_19__compile_error__812bccf2/reference.cu"
+        "input": "data/cusolver_22__compile_error__f16664b9/input.json",
+        "prompts": "data/cusolver_22__compile_error__f16664b9/prompt.txt",
+        "testbench": "data/cusolver_22__compile_error__f16664b9/testbench",
+        "references": "data/cusolver_22__compile_error__f16664b9/reference.cu"
       },
       "broken_start": {
-        "code_path": "data/cusolver_19__compile_error__812bccf2/broken_start.cu",
+        "code_path": "data/cusolver_22__compile_error__f16664b9/broken_start.cu",
         "source_origin": "anonymous frontier model",
         "error_category": "compile_error",
-        "lines": 165,
-        "code_hash": "812bccf29a2b2221"
+        "lines": 154,
+        "code_hash": "f16664b99a4af831"
       }
     },
     {
@@ -973,24 +847,6 @@
         "error_category": "compile_error",
         "lines": 145,
         "code_hash": "5d0216dab893756b"
-      }
-    },
-    {
-      "task_id": "cusolver_26",
-      "stem": "cusolver_26",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cusolver_26__compile_error__134e9d37/input.json",
-        "prompts": "data/cusolver_26__compile_error__134e9d37/prompt.txt",
-        "testbench": "data/cusolver_26__compile_error__134e9d37/testbench",
-        "references": "data/cusolver_26__compile_error__134e9d37/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cusolver_26__compile_error__134e9d37/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 172,
-        "code_hash": "134e9d37b0e58018"
       }
     },
     {
@@ -1030,24 +886,6 @@
       }
     },
     {
-      "task_id": "cusolver_6",
-      "stem": "cusolver_6",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cusolver_6__compile_error__5e024f61/input.json",
-        "prompts": "data/cusolver_6__compile_error__5e024f61/prompt.txt",
-        "testbench": "data/cusolver_6__compile_error__5e024f61/testbench",
-        "references": "data/cusolver_6__compile_error__5e024f61/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cusolver_6__compile_error__5e024f61/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 141,
-        "code_hash": "5e024f61da5a7824"
-      }
-    },
-    {
       "task_id": "cusparse_26",
       "stem": "cusparse_26",
       "source": "anonymous_curated",
@@ -1081,24 +919,6 @@
         "error_category": "compile_error",
         "lines": 132,
         "code_hash": "2612d349ccf22a62"
-      }
-    },
-    {
-      "task_id": "cusparse_2",
-      "stem": "cusparse_2",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/cusparse_2__compile_error__5aa181ca/input.json",
-        "prompts": "data/cusparse_2__compile_error__5aa181ca/prompt.txt",
-        "testbench": "data/cusparse_2__compile_error__5aa181ca/testbench",
-        "references": "data/cusparse_2__compile_error__5aa181ca/reference.cu"
-      },
-      "broken_start": {
-        "code_path": "data/cusparse_2__compile_error__5aa181ca/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 93,
-        "code_hash": "5aa181ca9889fef6"
       }
     },
     {
@@ -1156,6 +976,24 @@
       }
     },
     {
+      "task_id": "cutlass_16_ampere_tensorop_conv2dfprop",
+      "stem": "cutlass_16_ampere_tensorop_conv2dfprop",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7/input.json",
+        "prompts": "data/cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7/prompt.txt",
+        "testbench": "data/cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7/testbench",
+        "references": "data/cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_16_ampere_tensorop_conv2dfprop__compile_error__d43abdc7/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 913,
+        "code_hash": "d43abdc7fafc4338"
+      }
+    },
+    {
       "task_id": "cutlass_20_simt_canonical",
       "stem": "cutlass_20_simt_canonical",
       "source": "anonymous_curated",
@@ -1171,6 +1009,60 @@
         "error_category": "logic_error",
         "lines": 234,
         "code_hash": "ce1dc03e83e2ba76"
+      }
+    },
+    {
+      "task_id": "cutlass_25_ampere_fprop_mainloop_fusion",
+      "stem": "cutlass_25_ampere_fprop_mainloop_fusion",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff/input.json",
+        "prompts": "data/cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff/prompt.txt",
+        "testbench": "data/cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff/testbench",
+        "references": "data/cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_25_ampere_fprop_mainloop_fusion__compile_error__6ceebbff/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 1250,
+        "code_hash": "6ceebbffc1d22221"
+      }
+    },
+    {
+      "task_id": "cutlass_26_ampere_wgrad_mainloop_fusion",
+      "stem": "cutlass_26_ampere_wgrad_mainloop_fusion",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51/input.json",
+        "prompts": "data/cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51/prompt.txt",
+        "testbench": "data/cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51/testbench",
+        "references": "data/cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_26_ampere_wgrad_mainloop_fusion__compile_error__060adb51/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 824,
+        "code_hash": "060adb5164020220"
+      }
+    },
+    {
+      "task_id": "cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop",
+      "stem": "cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a/input.json",
+        "prompts": "data/cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a/prompt.txt",
+        "testbench": "data/cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a/testbench",
+        "references": "data/cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_28_ampere_3xtf32_fast_accurate_tensorop_fprop__compile_error__b9f4634a/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 1053,
+        "code_hash": "b9f4634a14a65e90"
       }
     },
     {
@@ -1228,6 +1120,24 @@
       }
     },
     {
+      "task_id": "cutlass_34_transposed_conv2d",
+      "stem": "cutlass_34_transposed_conv2d",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_34_transposed_conv2d__compile_error__91fd83a4/input.json",
+        "prompts": "data/cutlass_34_transposed_conv2d__compile_error__91fd83a4/prompt.txt",
+        "testbench": "data/cutlass_34_transposed_conv2d__compile_error__91fd83a4/testbench",
+        "references": "data/cutlass_34_transposed_conv2d__compile_error__91fd83a4/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_34_transposed_conv2d__compile_error__91fd83a4/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 737,
+        "code_hash": "91fd83a463ae77dd"
+      }
+    },
+    {
       "task_id": "cutlass_35_gemm_softmax",
       "stem": "cutlass_35_gemm_softmax",
       "source": "anonymous_curated",
@@ -1279,6 +1189,24 @@
         "error_category": "logic_error",
         "lines": 253,
         "code_hash": "e47bddec706365d8"
+      }
+    },
+    {
+      "task_id": "cutlass_41_fused_multi_head_attention",
+      "stem": "cutlass_41_fused_multi_head_attention",
+      "source": "anonymous_curated",
+      "dataset_paths": {
+        "input": "data/cutlass_41_fused_multi_head_attention__compile_error__8608d88b/input.json",
+        "prompts": "data/cutlass_41_fused_multi_head_attention__compile_error__8608d88b/prompt.txt",
+        "testbench": "data/cutlass_41_fused_multi_head_attention__compile_error__8608d88b/testbench",
+        "references": "data/cutlass_41_fused_multi_head_attention__compile_error__8608d88b/reference.cu"
+      },
+      "broken_start": {
+        "code_path": "data/cutlass_41_fused_multi_head_attention__compile_error__8608d88b/broken_start.h",
+        "source_origin": "anonymous frontier model",
+        "error_category": "compile_error",
+        "lines": 1050,
+        "code_hash": "8608d88b701babcc"
       }
     },
     {
@@ -1876,42 +1804,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level1_93",
-      "stem": "kernelbench_level1_93",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level1_93__compile_error__9cc201b6/input.json",
-        "prompts": "data/kernelbench_level1_93__compile_error__9cc201b6/prompt.txt",
-        "testbench": "data/kernelbench_level1_93__compile_error__9cc201b6/testbench",
-        "references": "data/kernelbench_level1_93__compile_error__9cc201b6/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level1_93__compile_error__9cc201b6/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 111,
-        "code_hash": "9cc201b604c57062"
-      }
-    },
-    {
-      "task_id": "kernelbench_level1_94",
-      "stem": "kernelbench_level1_94",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level1_94__compile_error__18d598a4/input.json",
-        "prompts": "data/kernelbench_level1_94__compile_error__18d598a4/prompt.txt",
-        "testbench": "data/kernelbench_level1_94__compile_error__18d598a4/testbench",
-        "references": "data/kernelbench_level1_94__compile_error__18d598a4/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level1_94__compile_error__18d598a4/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 150,
-        "code_hash": "18d598a41f829841"
-      }
-    },
-    {
       "task_id": "kernelbench_level1_99",
       "stem": "kernelbench_level1_99",
       "source": "anonymous_curated",
@@ -1966,24 +1858,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level2_15",
-      "stem": "kernelbench_level2_15",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_15__compile_error__16c7784d/input.json",
-        "prompts": "data/kernelbench_level2_15__compile_error__16c7784d/prompt.txt",
-        "testbench": "data/kernelbench_level2_15__compile_error__16c7784d/testbench",
-        "references": "data/kernelbench_level2_15__compile_error__16c7784d/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_15__compile_error__16c7784d/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 128,
-        "code_hash": "16c7784dd8ca28bc"
-      }
-    },
-    {
       "task_id": "kernelbench_level2_19",
       "stem": "kernelbench_level2_19",
       "source": "anonymous_curated",
@@ -2017,60 +1891,6 @@
         "error_category": "compile_error",
         "lines": 170,
         "code_hash": "31cb416e8cc6ffe2"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_23",
-      "stem": "kernelbench_level2_23",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_23__compile_error__b2c65431/input.json",
-        "prompts": "data/kernelbench_level2_23__compile_error__b2c65431/prompt.txt",
-        "testbench": "data/kernelbench_level2_23__compile_error__b2c65431/testbench",
-        "references": "data/kernelbench_level2_23__compile_error__b2c65431/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_23__compile_error__b2c65431/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 183,
-        "code_hash": "b2c65431e7b71e6c"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_28",
-      "stem": "kernelbench_level2_28",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_28__compile_error__3924bbe7/input.json",
-        "prompts": "data/kernelbench_level2_28__compile_error__3924bbe7/prompt.txt",
-        "testbench": "data/kernelbench_level2_28__compile_error__3924bbe7/testbench",
-        "references": "data/kernelbench_level2_28__compile_error__3924bbe7/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_28__compile_error__3924bbe7/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 135,
-        "code_hash": "3924bbe70b34eacd"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_29",
-      "stem": "kernelbench_level2_29",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_29__compile_error__2ef81608/input.json",
-        "prompts": "data/kernelbench_level2_29__compile_error__2ef81608/prompt.txt",
-        "testbench": "data/kernelbench_level2_29__compile_error__2ef81608/testbench",
-        "references": "data/kernelbench_level2_29__compile_error__2ef81608/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_29__compile_error__2ef81608/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 134,
-        "code_hash": "2ef81608dda9823f"
       }
     },
     {
@@ -2110,24 +1930,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level2_33",
-      "stem": "kernelbench_level2_33",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_33__compile_error__d63b694a/input.json",
-        "prompts": "data/kernelbench_level2_33__compile_error__d63b694a/prompt.txt",
-        "testbench": "data/kernelbench_level2_33__compile_error__d63b694a/testbench",
-        "references": "data/kernelbench_level2_33__compile_error__d63b694a/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_33__compile_error__d63b694a/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 121,
-        "code_hash": "d63b694a178c83a5"
-      }
-    },
-    {
       "task_id": "kernelbench_level2_34",
       "stem": "kernelbench_level2_34",
       "source": "anonymous_curated",
@@ -2146,24 +1948,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level2_37",
-      "stem": "kernelbench_level2_37",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_37__compile_error__07ff80cc/input.json",
-        "prompts": "data/kernelbench_level2_37__compile_error__07ff80cc/prompt.txt",
-        "testbench": "data/kernelbench_level2_37__compile_error__07ff80cc/testbench",
-        "references": "data/kernelbench_level2_37__compile_error__07ff80cc/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_37__compile_error__07ff80cc/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 103,
-        "code_hash": "07ff80cc3216058b"
-      }
-    },
-    {
       "task_id": "kernelbench_level2_3",
       "stem": "kernelbench_level2_3",
       "source": "anonymous_curated",
@@ -2179,24 +1963,6 @@
         "error_category": "compile_error",
         "lines": 114,
         "code_hash": "dd4f6cf775fc6852"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_41",
-      "stem": "kernelbench_level2_41",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_41__compile_error__d8526e09/input.json",
-        "prompts": "data/kernelbench_level2_41__compile_error__d8526e09/prompt.txt",
-        "testbench": "data/kernelbench_level2_41__compile_error__d8526e09/testbench",
-        "references": "data/kernelbench_level2_41__compile_error__d8526e09/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_41__compile_error__d8526e09/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 128,
-        "code_hash": "d8526e09de78cb1b"
       }
     },
     {
@@ -2233,24 +1999,6 @@
         "error_category": "compile_error",
         "lines": 93,
         "code_hash": "5f790bcdb099c64d"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_51",
-      "stem": "kernelbench_level2_51",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_51__compile_error__8f71193c/input.json",
-        "prompts": "data/kernelbench_level2_51__compile_error__8f71193c/prompt.txt",
-        "testbench": "data/kernelbench_level2_51__compile_error__8f71193c/testbench",
-        "references": "data/kernelbench_level2_51__compile_error__8f71193c/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_51__compile_error__8f71193c/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 146,
-        "code_hash": "8f71193c1fd6fefa"
       }
     },
     {
@@ -2362,24 +2110,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level2_67",
-      "stem": "kernelbench_level2_67",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_67__compile_error__eb5a5e13/input.json",
-        "prompts": "data/kernelbench_level2_67__compile_error__eb5a5e13/prompt.txt",
-        "testbench": "data/kernelbench_level2_67__compile_error__eb5a5e13/testbench",
-        "references": "data/kernelbench_level2_67__compile_error__eb5a5e13/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_67__compile_error__eb5a5e13/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 126,
-        "code_hash": "eb5a5e13d7fd8642"
-      }
-    },
-    {
       "task_id": "kernelbench_level2_72",
       "stem": "kernelbench_level2_72",
       "source": "anonymous_curated",
@@ -2395,24 +2125,6 @@
         "error_category": "logic_error",
         "lines": 138,
         "code_hash": "a325074f63e5b122"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_73",
-      "stem": "kernelbench_level2_73",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_73__compile_error__50a85dc1/input.json",
-        "prompts": "data/kernelbench_level2_73__compile_error__50a85dc1/prompt.txt",
-        "testbench": "data/kernelbench_level2_73__compile_error__50a85dc1/testbench",
-        "references": "data/kernelbench_level2_73__compile_error__50a85dc1/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_73__compile_error__50a85dc1/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 127,
-        "code_hash": "50a85dc10d23fef5"
       }
     },
     {
@@ -2470,24 +2182,6 @@
       }
     },
     {
-      "task_id": "kernelbench_level2_83",
-      "stem": "kernelbench_level2_83",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_83__compile_error__cef3dd8c/input.json",
-        "prompts": "data/kernelbench_level2_83__compile_error__cef3dd8c/prompt.txt",
-        "testbench": "data/kernelbench_level2_83__compile_error__cef3dd8c/testbench",
-        "references": "data/kernelbench_level2_83__compile_error__cef3dd8c/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_83__compile_error__cef3dd8c/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 119,
-        "code_hash": "cef3dd8c7ca3c38b"
-      }
-    },
-    {
       "task_id": "kernelbench_level2_85",
       "stem": "kernelbench_level2_85",
       "source": "anonymous_curated",
@@ -2503,24 +2197,6 @@
         "error_category": "compile_error",
         "lines": 194,
         "code_hash": "4719c48f5e188467"
-      }
-    },
-    {
-      "task_id": "kernelbench_level2_91",
-      "stem": "kernelbench_level2_91",
-      "source": "anonymous_curated",
-      "dataset_paths": {
-        "input": "data/kernelbench_level2_91__compile_error__283c75d2/input.json",
-        "prompts": "data/kernelbench_level2_91__compile_error__283c75d2/prompt.txt",
-        "testbench": "data/kernelbench_level2_91__compile_error__283c75d2/testbench",
-        "references": "data/kernelbench_level2_91__compile_error__283c75d2/reference.py"
-      },
-      "broken_start": {
-        "code_path": "data/kernelbench_level2_91__compile_error__283c75d2/broken_start.cu",
-        "source_origin": "anonymous frontier model",
-        "error_category": "compile_error",
-        "lines": 167,
-        "code_hash": "283c75d2c6ebad32"
       }
     },
     {
@@ -3046,5 +2722,5 @@
       }
     }
   ],
-  "n_tasks": 169
+  "n_tasks": 151
 }

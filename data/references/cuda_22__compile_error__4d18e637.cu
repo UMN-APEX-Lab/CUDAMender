@@ -1,1 +1,0 @@
-../cuda_22__compile_error__4d18e637/reference.cu

@@ -130,6 +130,7 @@ def _pre_turn_context_mgmt(
     summarizer,
     base_system: str,
     in_locate_phase: bool = False,
+    role: str | None = None,
 ) -> None:
     """Compact context, log layer activity, and (re)attach the budget
     nudge to the system message. Mutates messages in place."""
@@ -148,7 +149,7 @@ def _pre_turn_context_mgmt(
             f"  [ctx] {toks}→{stats.tokens_after} toks, "
             f"applied: {','.join(stats.layers_applied)}{extra}"
         )
-    nudge = get_budget_nudge(budget_status, in_locate_phase=in_locate_phase)
+    nudge = get_budget_nudge(budget_status, in_locate_phase=in_locate_phase, role=role)
     messages[0]["content"] = base_system + nudge if nudge else base_system
 
 
@@ -300,9 +301,15 @@ def _dispatch_tool_calls(
     client,
     prompt_text: str,
     json_action: bool = False,
+    allow_staged_edits: bool = False,
 ) -> str | None:
     """Dispatch each tool call in a turn. Returns a stop_reason that
-    should terminate the main loop, or None to continue."""
+    should terminate the main loop, or None to continue.
+
+    ``allow_staged_edits`` (blackboard Coder) keeps `apply_edit` available
+    in full-file mode: edits are staged on the complete candidate, and a
+    code-less `write_solution` submits that staged complete file.
+    """
     for tc in tool_calls:
         if state.tool_calls_used >= max_tool_calls:
             exhausted = (
@@ -334,7 +341,8 @@ def _dispatch_tool_calls(
             and isinstance(parsed_args.get("code"), str)
             and bool(parsed_args.get("code", "").strip())
         )
-        if _full_file_submissions(config) and name == "apply_edit":
+        full_file_mode = _full_file_submissions(config)
+        if full_file_mode and name == "apply_edit" and not allow_staged_edits:
             result_text = (
                 "[action rejected] This run requires full-file code submissions. "
                 "Do not use `apply_edit`. Call `write_solution` with a complete "
@@ -350,14 +358,21 @@ def _dispatch_tool_calls(
                 })
             continue
         if (
-            _full_file_submissions(config)
+            full_file_mode
             and name == "write_solution"
             and not full_file_fallback_submit
+            and not (allow_staged_edits and state.applied_edit_this_iteration)
         ):
             result_text = (
                 "[action rejected] This run requires full-file code submissions. "
                 "`write_solution` must include a non-empty `code` argument with "
-                "the complete revised solution file, not only a rationale."
+                "the complete revised solution file, not only a rationale"
+                + (
+                    ", or follow a successful `apply_edit` that staged the "
+                    "edited candidate."
+                    if allow_staged_edits
+                    else "."
+                )
             )
             if json_action:
                 _append_action_result_message(messages, name, result_text, ok=False)
@@ -493,9 +508,10 @@ def _auto_submit_after_apply_edit(
     client,
     prompt_text: str,
     json_action: bool = False,
+    allow_staged_edits: bool = False,
 ) -> str | None:
     """Submit the staged patch when coder edited but omitted write_solution."""
-    if _full_file_submissions(config):
+    if _full_file_submissions(config) and not allow_staged_edits:
         return None
     if not state.applied_edit_this_iteration:
         return None
@@ -515,6 +531,7 @@ def _auto_submit_after_apply_edit(
         task_stem, dataset_dir, input_meta, config, output_dir,
         client, prompt_text,
         json_action=json_action,
+        allow_staged_edits=allow_staged_edits,
     )
 
 
